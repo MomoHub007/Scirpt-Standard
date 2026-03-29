@@ -1,0 +1,28 @@
+-- ไฟล์หลักบน GitHub
+local maps = {
+    [92683694220101] = "https://raw.githubusercontent.com/MomoHub007/Fight-Your-Zombie/refs/heads/main/README.md",
+	[134763881293027] = "https://raw.githubusercontent.com/MomoHub007/steal-from-brainrot/refs/heads/main/script",
+	[119987266683883] = "https://raw.githubusercontent.com/MomoHub007/Surviavl-lava-for-brainrot/refs/heads/main/script",
+	[76124655331395] = "https://raw.githubusercontent.com/MomoHub007/SpearTrain/refs/heads/main/script",
+	[139299356663913] = "https://raw.githubusercontent.com/MomoHub007/Jump-for-Brainrot/refs/heads/main/script",
+    [130594398886540] = "https://raw.githubusercontent.com/MomoHub007/Garden-Horizon/refs/heads/main/script",
+    [120564326011184] = "https://raw.githubusercontent.com/MomoHub007/Be-a-Youtuber/refs/heads/main/script",
+	[101640913672688] = "https://raw.githubusercontent.com/MomoHub007/Anime-Ghost/refs/heads/main/script",
+	[90738171169572] = "https://raw.githubusercontent.com/MomoHub007/Anime-Tactical/refs/heads/main/script",
+	[111446873000464] = "https://raw.githubusercontent.com/MomoHub007/Anime-Ranger-X/refs/heads/main/script", 
+    [77747658251236] = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/script",
+	[99684056491472] = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/script",
+	[75159314259063] = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/script",
+	[123955125827131] = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/script",
+	[138368689293913] = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/script",
+	[96767841099256] = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/script"
+}
+
+
+local scriptURL = maps[game.PlaceId]
+
+if scriptURL then
+    loadstring(game:HttpGet(scriptURL))()
+else
+    print("ไม่พบสคริปต์สำหรับแมพนี้")
+end
