@@ -9,8 +9,8 @@ local maps = {
     [101640913672688] = { normal = "https://raw.githubusercontent.com/MomoHub007/Anime-Ghost/refs/heads/main/script" },
     [90738171169572] = { normal = "https://raw.githubusercontent.com/MomoHub007/Anime-Tactical/refs/heads/main/Premium" },
     [111446873000464] = { normal = "https://raw.githubusercontent.com/MomoHub007/Anime-Ranger-X/refs/heads/main/script-premium" },
-    [126297188712308] = "https://raw.githubusercontent.com/MomoHub007/Scirpt-Standard/refs/heads/main/Anime%20Overload",
-	[80353351682367] = "https://raw.githubusercontent.com/MomoHub007/Scirpt-Standard/refs/heads/main/Anime%20Overload",
+    [126297188712308] = { normal = "https://raw.githubusercontent.com/MomoHub007/Scirpt-Standard/refs/heads/main/Anime%20Overload" },
+	[80353351682367] = { normal = "https://raw.githubusercontent.com/MomoHub007/Scirpt-Standard/refs/heads/main/Anime%20Overload" },
     -- แมพ Sailor Piece (ใส่สคริปต์ไก่ตันให้ครบทุก PlaceId ของแมพนี้)
     [77747658251236] = { 
         normal = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/script",
