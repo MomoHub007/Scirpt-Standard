@@ -1,1 +1,67 @@
+local maps = {
+    [92683694220101] = { normal = "https://raw.githubusercontent.com/MomoHub007/Fight-Your-Zombie/refs/heads/main/README.md" },
+    [134763881293027] = { normal = "https://raw.githubusercontent.com/MomoHub007/steal-from-brainrot/refs/heads/main/script" },
+    [119987266683883] = { normal = "https://raw.githubusercontent.com/MomoHub007/Surviavl-lava-for-brainrot/refs/heads/main/script" },
+    [76124655331395] = { normal = "https://raw.githubusercontent.com/MomoHub007/SpearTrain/refs/heads/main/script" },
+    [139299356663913] = { normal = "https://raw.githubusercontent.com/MomoHub007/Jump-for-Brainrot/refs/heads/main/script" },
+    [130594398886540] = { normal = "https://raw.githubusercontent.com/MomoHub007/Garden-Horizon/refs/heads/main/script" },
+    [120564326011184] = { normal = "https://raw.githubusercontent.com/MomoHub007/Be-a-Youtuber/refs/heads/main/script" },
+    [101640913672688] = { normal = "https://raw.githubusercontent.com/MomoHub007/Anime-Ghost/refs/heads/main/script" },
+    [90738171169572] = { normal = "https://raw.githubusercontent.com/MomoHub007/Anime-Tactical/refs/heads/main/Premium" },
+    [111446873000464] = { normal = "https://raw.githubusercontent.com/MomoHub007/Anime-Ranger-X/refs/heads/main/script-premium" },
+    
+    -- แมพ Sailor Piece (ใส่สคริปต์ไก่ตันให้ครบทุก PlaceId ของแมพนี้)
+    [77747658251236] = { 
+        normal = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/script",
+        kaitun = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/kaitun"
+    },
+    [99684056491472] = { 
+        normal = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/script",
+        kaitun = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/kaitun"
+    },
+    [75159314259063] = { 
+        normal = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/script",
+        kaitun = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/kaitun"
+    },
+    [123955125827131] = { 
+        normal = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/script",
+        kaitun = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/kaitun"
+    },
+    [138368689293913] = { 
+        normal = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/script",
+        kaitun = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/kaitun"
+    },
+    [96767841099256] = { 
+        normal = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/script",
+        kaitun = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/kaitun"
+    }
+}
 
+local mapData = maps[game.PlaceId]
+
+if mapData then
+    local scriptURL = ""
+
+    -- ตรวจสอบตัวแปร _G.Kaitun
+    if _G.Kaitun == true or _G.Kaitun == "true" then
+        if mapData.kaitun then
+            scriptURL = mapData.kaitun
+            print("[MomoHub] โหลดสำเร็จ: โหมดไก่ตัน")
+        else
+            -- ถ้าเปิดโหมดไก่ตัน แต่แมพนั้นยังไม่มีสคริปต์ไก่ตัน ให้รันแบบธรรมดาแทน
+            scriptURL = mapData.normal
+            print("[MomoHub] แมพนี้ยังไม่มีสคริปต์ไก่ตัน -> กำลังโหลดโหมดธรรมดาแทน")
+        end
+    else
+        -- ถ้าไม่ได้เปิด _G.Kaitun ให้รันแบบธรรมดา
+        scriptURL = mapData.normal
+        print("[MomoHub] โหลดสำเร็จ: โหมดธรรมดา")
+    end
+
+    -- โหลดสคริปต์
+    if scriptURL and scriptURL ~= "" then
+        loadstring(game:HttpGet(scriptURL))()
+    end
+else
+    print("[MomoHub] ไม่พบสคริปต์สำหรับแมพนี้")
+end
