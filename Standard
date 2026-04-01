@@ -15,7 +15,9 @@ local maps = {
 	[75159314259063] = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/script",
 	[123955125827131] = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/script",
 	[138368689293913] = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/script",
-	[96767841099256] = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/script"
+	[96767841099256] = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/script",
+	[126297188712308] = "https://raw.githubusercontent.com/MomoHub007/Scirpt-Standard/refs/heads/main/Anime%20Overload",
+	[80353351682367] = "https://raw.githubusercontent.com/MomoHub007/Scirpt-Standard/refs/heads/main/Anime%20Overload"
 }
 
 
