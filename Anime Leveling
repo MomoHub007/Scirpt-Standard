@@ -1,0 +1,1077 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local LP = Players.LocalPlayer
+
+local MoMoLogo = "rbxthumb://type=Asset&id=121052363208302&w=150&h=150"
+
+-- ==========================================
+-- ⚙️ ค่าเริ่มต้นสำหรับ UI State (เฉพาะ Settings)
+-- ==========================================
+local MoMoConfig = {
+    AutoFpsBoost = false,
+    WalkSpeed = 16, 
+    JumpPower = 50, 
+    AntiAFK = false, 
+    AutoRejoin = false
+}
+
+-- ==========================================
+-- 🎨 เริ่มโหลด UI (MACLIB)
+-- ==========================================
+local MacLib = loadstring(game:HttpGet("https://github.com/biggaboy212/Maclib/releases/latest/download/maclib.txt"))()
+
+local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+local windowSize = isMobile and UDim2.fromOffset(420, 340) or UDim2.fromOffset(868, 550)
+
+local Window = MacLib:Window({
+    Title = "MOMOHUB",
+    Subtitle = "Anime Leveling",
+    Size = windowSize,
+    DragStyle = 1,
+    DisabledWindowControls = {},
+    ShowUserInfo = not isMobile,
+    Keybind = Enum.KeyCode.LeftControl,
+    AcrylicBlur = not isMobile,
+})
+
+-- 🌟 2. [The Magic Trick] ยัด UIScale เพื่อย่อส่วนทุกอย่างบนหน้าจอพร้อมกัน!
+task.spawn(function()
+    task.wait(1) -- รอให้ MacLib โหลด UI เข้าจอให้เสร็จก่อน
+    local targetGui = (gethui and gethui()) or game:GetService("CoreGui") or Players.LocalPlayer:WaitForChild("PlayerGui")
+    
+    -- ค้นหาโฟลเดอร์ UI ของ MacLib
+    for _, gui in pairs(targetGui:GetChildren()) do
+        if gui:IsA("ScreenGui") then
+            -- หา Frame หน้าต่างหลักของโปรแกรม
+            for _, child in pairs(gui:GetChildren()) do
+                if (child:IsA("Frame") or child:IsA("CanvasGroup")) and child.Size.X.Offset > 300 then
+                    -- ติดตั้งเครื่องย่อส่วน
+                    local scale = child:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
+                    
+                    -- 📉 ปรับเปอร์เซ็นต์ความเล็กตรงนี้ครับ!
+                    -- 1.0 = 100% (ปกติ)
+                    -- 0.8 = 80% (เล็กลงนิดหน่อย กำลังสวย)
+                    -- 0.7 = 70% (เล็กกะทัดรัด)
+                    scale.Scale = 1
+                    
+                    scale.Parent = child
+                end
+            end
+        end
+    end
+end)
+
+-- ฟังก์ชัน Notify
+local function MoMoNotify(data)
+    Window:Notify({
+        Title = data.Title or "MoMoHub",
+        Description = data.Desc or "",
+        Lifetime = data.Time or 3
+    })
+end
+
+local globalSettings = {
+    UIBlurToggle = Window:GlobalSetting({
+        Name = "UI Blur",
+        Default = Window:GetAcrylicBlurState(),
+        Callback = function(bool)
+            Window:SetAcrylicBlurState(bool)
+            MoMoNotify({Title = "Settings", Desc = (bool and "Enabled" or "Disabled") .. " UI Blur", Time = 5})
+        end,
+    }),
+    NotificationToggler = Window:GlobalSetting({
+        Name = "Notifications",
+        Default = Window:GetNotificationsState(),
+        Callback = function(bool)
+            Window:SetNotificationsState(bool)
+            MoMoNotify({Title = "Settings", Desc = (bool and "Enabled" or "Disabled") .. " Notifications", Time = 5})
+        end,
+    }),
+    ShowUserInfo = Window:GlobalSetting({
+        Name = "Show User Info",
+        Default = Window:GetUserInfoState(),
+        Callback = function(bool)
+            Window:SetUserInfoState(bool)
+            MoMoNotify({Title = "Settings", Desc = (bool and "Showing" or "Redacted") .. " User Info", Time = 5})
+        end,
+    })
+}
+
+-- ==========================================
+-- 📌 ปุ่มเปิด/ปิด UI สำหรับผู้เล่นมือถือ
+-- ==========================================
+local targetGui = (gethui and gethui()) or game:GetService("CoreGui") or Players.LocalPlayer:WaitForChild("PlayerGui")
+local CustomGui = Instance.new("ScreenGui")
+CustomGui.Name = "MoMoHubToggleUI"
+CustomGui.ResetOnSpawn = false
+CustomGui.Parent = targetGui
+
+local ToggleBtn = Instance.new("ImageButton")
+ToggleBtn.Name = "MoMoHubToggle"
+ToggleBtn.Parent = CustomGui
+ToggleBtn.Position = UDim2.new(0.5, -25, 0, 5) 
+ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
+ToggleBtn.BackgroundTransparency = 1
+ToggleBtn.Image = MoMoLogo
+
+local dragging, dragInput, dragStart, startPos
+ToggleBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true; dragStart = input.Position; startPos = ToggleBtn.Position
+        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+    end
+end)
+ToggleBtn.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        ToggleBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+local vim = game:GetService("VirtualInputManager")
+local isClicking = false
+ToggleBtn.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isClicking = true end end)
+ToggleBtn.InputChanged:Connect(function(input) if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragging then isClicking = false end end)
+ToggleBtn.InputEnded:Connect(function(input)
+    if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and isClicking then
+        pcall(function() vim:SendKeyEvent(true, Enum.KeyCode.LeftControl, false, game); task.wait(0.05); vim:SendKeyEvent(false, Enum.KeyCode.LeftControl, false, game) end)
+    end
+end)
+
+-- ==========================================
+-- 📑 สร้าง Tabs & Sections (MacLib)
+-- ==========================================
+local tabGroups = { Main = Window:TabGroup() }
+
+local tabs = {
+    Settings = tabGroups.Main:Tab({ Name = "Settings", Image = "rbxassetid://10709810948" }),
+}
+
+-- ====== Settings Tab ======
+local PerfSec = tabs.Settings:Section({ Side = "Left" })
+PerfSec:Header({ Name = "Performance" })
+PerfSec:Toggle({ Name = "Enable FPS Boost (Smooth Plastic)", Default = MoMoConfig.AutoFpsBoost, Callback = function(val) MoMoConfig.AutoFpsBoost = val; if val then MoMoNotify({Title = "FPS Boost", Desc = "🚀 FPS Boost Enabled!", Time = 3}) else MoMoNotify({Title = "FPS Boost", Desc = "⚠️ Rejoin to restore graphics", Time = 4}) end end }, "MoMo_FpsBoost")
+
+local PlSec = tabs.Settings:Section({ Side = "Right" })
+PlSec:Header({ Name = "Local Player" })
+PlSec:Slider({ Name = "WalkSpeed", Default = MoMoConfig.WalkSpeed, Minimum = 16, Maximum = 250, Precision = 1, DisplayMethod = "Value", Callback = function(val) MoMoConfig.WalkSpeed = val end }, "MoMo_WalkSpd")
+PlSec:Slider({ Name = "JumpPower", Default = MoMoConfig.JumpPower, Minimum = 50, Maximum = 300, Precision = 1, DisplayMethod = "Value", Callback = function(val) MoMoConfig.JumpPower = val end }, "MoMo_JumpPwr")
+
+PlSec:Toggle({ Name = "Anti-AFK", Default = MoMoConfig.AntiAFK, Callback = function(val) MoMoConfig.AntiAFK = val end }, "MoMo_AntiAFK")
+PlSec:Toggle({ Name = "Auto Rejoin", Default = MoMoConfig.AutoRejoin, Callback = function(val) MoMoConfig.AutoRejoin = val end }, "MoMo_AutoRejoin")
+
+local DisSec = tabs.Settings:Section({ Side = "Left" })
+DisSec:Header({ Name = "Discord" })
+DisSec:Button({ Name = "Join Discord", Callback = function() if setclipboard then setclipboard("https://discord.gg/k2wdyy8QMN"); MoMoNotify({Title = "MoMoHub", Desc = "Discord link copied!", Time = 3}) end end })
+
+-- ==========================================
+-- 🛠️ Advanced Config Manager (Delete & Reset)
+-- ==========================================
+local ConfigFolder = "MoMoHub_UI_Only"
+local selectedConfigToDelete = "None"
+local configDeleteDropdown
+
+local AdvConfigSec = tabs.Settings:Section({ Side = "Left" })
+
+AdvConfigSec:Header({
+    Name = "Advanced Config Utilities"
+})
+
+local function getConfigList()
+    local files = {}
+
+    if listfiles and isfolder and isfolder(ConfigFolder) then
+        pcall(function()
+            for _, file in ipairs(listfiles(ConfigFolder)) do
+                if type(file) == "string" and file:match("%.json$") then
+                    local name = file:match("([^/\\]+)%.json$")
+                    if name then
+                        table.insert(files, name)
+                    end
+                end
+            end
+        end)
+    end
+
+    table.sort(files, function(a, b)
+        return tostring(a):lower() < tostring(b):lower()
+    end)
+
+    if #files == 0 then
+        return {"None"}
+    end
+
+    return files
+end
+
+local function refreshConfigDeleteDropdown(forceSelection)
+    local currentList = getConfigList()
+
+    if forceSelection and forceSelection ~= "" then
+        local found = false
+        for _, v in ipairs(currentList) do
+            if v == forceSelection then
+                found = true
+                break
+            end
+        end
+        selectedConfigToDelete = found and forceSelection or "None"
+    else
+        local stillExists = false
+        for _, v in ipairs(currentList) do
+            if v == selectedConfigToDelete then
+                stillExists = true
+                break
+            end
+        end
+        if not stillExists then
+            selectedConfigToDelete = "None"
+        end
+    end
+
+    if configDeleteDropdown then
+        local refreshed = false
+
+        for funcName, func in pairs(configDeleteDropdown) do
+            if type(func) == "function" then
+                local lowerName = string.lower(funcName)
+
+                if lowerName:find("option") or lowerName:find("refresh") or lowerName:find("updatelist") or lowerName:find("setlist") or lowerName:find("reload") then
+                    local ok = pcall(function()
+                        func(configDeleteDropdown, currentList)
+                    end)
+                    if ok then
+                        refreshed = true
+                    end
+                end
+            end
+        end
+
+        if selectedConfigToDelete and selectedConfigToDelete ~= "None" then
+            pcall(function()
+                if configDeleteDropdown.UpdateSelection then
+                    configDeleteDropdown:UpdateSelection(selectedConfigToDelete)
+                end
+            end)
+        end
+
+        if not refreshed then
+            warn("[ConfigManager] Could not auto-refresh config dropdown methods.")
+        end
+    end
+end
+
+configDeleteDropdown = AdvConfigSec:Dropdown({
+    Name = "Select Config to Delete",
+    Options = getConfigList(),
+    Default = "None",
+    Callback = function(val)
+        selectedConfigToDelete = val
+    end
+}, "MoMoConfigDeleteDropdown")
+
+AdvConfigSec:Button({
+    Name = "Delete Selected Config",
+    Callback = function()
+        if not selectedConfigToDelete or selectedConfigToDelete == "None" then
+            MoMoNotify({
+                Title = "Error",
+                Desc = "กรุณาเลือกไฟล์ Config ก่อนกดลบ!",
+                Time = 3
+            })
+            return
+        end
+
+        local filepath = ConfigFolder .. "/" .. selectedConfigToDelete .. ".json"
+
+        if isfile and delfile and isfile(filepath) then
+            local ok = pcall(function()
+                delfile(filepath)
+            end)
+
+            if ok then
+                MoMoNotify({
+                    Title = "Config Deleted",
+                    Desc = "ลบไฟล์ " .. selectedConfigToDelete .. " เรียบร้อย!",
+                    Time = 3
+                })
+
+                selectedConfigToDelete = "None"
+                refreshConfigDeleteDropdown("None")
+            else
+                MoMoNotify({
+                    Title = "Error",
+                    Desc = "ลบไฟล์ Config ไม่สำเร็จ!",
+                    Time = 3
+                })
+            end
+        else
+            MoMoNotify({
+                Title = "Notice",
+                Desc = "ไม่พบไฟล์ Config ที่เลือก",
+                Time = 3
+            })
+
+            selectedConfigToDelete = "None"
+            refreshConfigDeleteDropdown("None")
+        end
+    end
+})
+
+AdvConfigSec:Button({
+    Name = "Reset Auto Load Config",
+    Callback = function()
+        local autoloadPath = ConfigFolder .. "/autoload.txt"
+
+        if isfile and delfile and isfile(autoloadPath) then
+            local ok = pcall(function()
+                delfile(autoloadPath)
+            end)
+
+            if ok then
+                MoMoNotify({
+                    Title = "Auto Load Cleared",
+                    Desc = "ล้างค่า Auto Load แล้ว! รันรอบหน้าจะไม่มีการโหลดออโต้",
+                    Time = 4
+                })
+            else
+                MoMoNotify({
+                    Title = "Error",
+                    Desc = "ล้าง Auto Load ไม่สำเร็จ!",
+                    Time = 3
+                })
+            end
+        else
+            MoMoNotify({
+                Title = "Notice",
+                Desc = "ไม่มีไฟล์ Auto Load ให้ล้าง (ปกติ)",
+                Time = 3
+            })
+        end
+    end
+})
+
+AdvConfigSec:Button({
+    Name = "Refresh Config List",
+    Callback = function()
+        refreshConfigDeleteDropdown(selectedConfigToDelete)
+        MoMoNotify({
+            Title = "Refreshed",
+            Desc = "อัปเดตรายชื่อ Config แล้ว!",
+            Time = 2
+        })
+    end
+})
+
+-- ==========================================
+-- 💾 Config System (MacLib Built-in)
+-- ==========================================
+MacLib:SetFolder("MoMoHub_UI_Only")
+tabs.Settings:InsertConfigSection("Right")
+
+tabs.Settings:Select()
+
+--==================================================
+-- Auto Egg Combined System
+--==================================================
+do
+	local ReplicatedStorage = game:GetService("ReplicatedStorage")
+	local RunService = game:GetService("RunService")
+
+	local Shared = {
+		Config = {
+			Debug = true,
+			DefaultStar = "Star1",
+			DefaultEggsPerHatch = 1,
+			DefaultIntervalSeconds = 0.1,
+			MinInterval = 0.05,
+			MaxInterval = 1.0,
+			PlacementCooldownSeconds = 0.1,
+			InvokeTimeoutSeconds = 2.0,
+			LoopIdleWait = 0.01,
+			StatusRefreshInterval = 0.5,
+			MaxRetryPerCall = 3,
+			RetryBaseDelay = 0.1,
+			RetryMaxDelay = 0.4,
+			SafeCallsPerSecond = 10,
+			WarnCallsPerSecond = 12,
+			HardCallsPerSecond = 15,
+			JitterMin = -0.02,
+			JitterMax = 0.02,
+			PauseOnRateLimitSeconds = 1.0,
+		},
+		State = {
+			initialized = false,
+			loopStarted = false,
+			isRunning = false,
+			isPaused = false,
+			pauseUntil = 0,
+			loopThread = nil,
+			totalCalls = 0,
+			totalEggsOpened = 0,
+			errorCount = 0,
+			lastCallTime = 0,
+			startTime = 0,
+			currentStatus = "Stopped",
+			lastUiRefresh = 0,
+			remoteBusy = false,
+			lastResponseTime = 0,
+			lastAdaptiveAdjustAt = 0,
+			connections = {},
+		},
+		UI = {
+			Tab = nil,
+			LeftSection = nil,
+			RightSection = nil,
+			Components = {
+				StarDropdown = nil,
+				QuantitySlider = nil,
+				AutoToggle = nil,
+				StatusButton = nil,
+				StatsButton = nil,
+				StopButton = nil,
+				IntervalButton = nil,
+			},
+		},
+		EggConfig = {
+			selectedStar = "Star1",
+			eggsPerHatch = 1,
+			intervalSeconds = 0.1,
+			minInterval = 0.05,
+			maxInterval = 1.0,
+		},
+		RateLimiter = {
+			lastCallTimestamp = 0,
+			actualInterval = 0.1,
+			callsInLastSecond = 0,
+			lastSecondCheck = os.clock(),
+			callHistory = {},
+		},
+		Remote = {
+			cached = nil,
+			lastFetchAttempt = 0,
+		},
+		Retry = {
+			counts = {},
+		},
+		Performance = {
+			lastHeartbeatAt = os.clock(),
+			avgDelta = 1 / 60,
+		},
+	}
+
+	local AutoEggSystem = {}
+	local EggRemoteInvoker = {}
+	local EggConfigManager = {}
+	local EggLoopController = {}
+	local UIManager = {}
+	local RateLimiter = {}
+	local ErrorHandler = {}
+	local RetryManager = {}
+	local PerformanceMonitor = {}
+
+	local STAR_OPTIONS = { "Star1", "Star2", "Star3", "Star4" }
+	local RANDOM = Random.new()
+
+	local function log(level, message, ...)
+		if level == "DEBUG" and not Shared.Config.Debug then return end
+		local prefix = string.format("[AutoEggSystem][%s] %s", tostring(level), tostring(message))
+		if select("#", ...) > 0 then warn(prefix, ...) else warn(prefix) end
+	end
+
+	local function notify(title, desc, timeValue)
+		pcall(function()
+			if type(MoMoNotify) == "function" then
+				MoMoNotify({ Title = title or "Auto Egg", Desc = desc or "", Time = timeValue or 3 })
+			end
+		end)
+	end
+
+	local function clamp(value, minValue, maxValue)
+		value = tonumber(value) or minValue
+		return math.min(math.max(value, minValue), maxValue)
+	end
+
+	local function starIsValid(star)
+		for i = 1, #STAR_OPTIONS do if STAR_OPTIONS[i] == star then return true end end
+		return false
+	end
+
+	local function safeSetComponentText(component, text)
+		if not component then return false end
+		local methods = { "SetName", "Update", "SetText", "SetTitle" }
+		for i = 1, #methods do
+			if type(component[methods[i]]) == "function" then
+				if pcall(function() component[methods[i]](component, text) end) then return true end
+			end
+		end
+		return pcall(function() component.Name = text end)
+	end
+
+	local function safeSetToggle(toggle, value)
+		if not toggle then return false end
+		local methods = { "SetValue", "Update", "SetActive" }
+		for i = 1, #methods do
+			if type(toggle[methods[i]]) == "function" then
+				if pcall(function() toggle[methods[i]](toggle, value) end) then return true end
+			end
+		end
+		return pcall(function() toggle.Value = value end)
+	end
+
+	local function setStatus(text, shouldNotify)
+		Shared.State.currentStatus = tostring(text or "Unknown")
+		if Shared.UI.Components.StatusButton then safeSetComponentText(Shared.UI.Components.StatusButton, "Status: " .. text) end
+		if shouldNotify then notify("Auto Egg", Shared.State.currentStatus, 2) end
+	end
+
+	function PerformanceMonitor.init()
+		local conn = RunService.Heartbeat:Connect(function(dt)
+			Shared.Performance.lastHeartbeatAt = os.clock()
+			Shared.Performance.avgDelta = (Shared.Performance.avgDelta * 0.9) + (dt * 0.1)
+		end)
+		table.insert(Shared.State.connections, conn)
+	end
+
+	function PerformanceMonitor.getCurrentCallRate()
+		local nowTime = os.clock()
+		local history = Shared.RateLimiter.callHistory
+		while #history > 0 and (nowTime - history[1]) > 1 do table.remove(history, 1) end
+		return #history
+	end
+
+	function PerformanceMonitor.suggestInterval()
+		local currentRate = PerformanceMonitor.getCurrentCallRate()
+		local target = Shared.EggConfig.intervalSeconds
+		if currentRate > Shared.Config.WarnCallsPerSecond then target = math.max(target, 0.12) end
+		if Shared.State.lastResponseTime > 0.5 then target = math.max(target, 0.2) end
+		return clamp(target, Shared.EggConfig.minInterval, Shared.EggConfig.maxInterval)
+	end
+
+	function RateLimiter.canCall()
+		if Shared.State.remoteBusy then return false end
+		local required = math.max(Shared.RateLimiter.actualInterval, Shared.Config.PlacementCooldownSeconds, Shared.EggConfig.intervalSeconds)
+		return (os.clock() - Shared.RateLimiter.lastCallTimestamp) >= required
+	end
+
+	function RateLimiter.recordCall()
+		local nowTime = os.clock()
+		Shared.RateLimiter.lastCallTimestamp = nowTime
+		table.insert(Shared.RateLimiter.callHistory, nowTime)
+	end
+
+	function EggConfigManager.setStar(s) if starIsValid(s) then Shared.EggConfig.selectedStar = s; return true end return false end
+	function EggConfigManager.setEggsPerHatch(a) Shared.EggConfig.eggsPerHatch = clamp(math.floor(a + 0.5), 1, 10); return true end
+	function EggConfigManager.setInterval(s) Shared.EggConfig.intervalSeconds = clamp(s, Shared.EggConfig.minInterval, Shared.EggConfig.maxInterval); return true end
+
+	function EggRemoteInvoker.getRemote()
+		local cached = Shared.Remote.cached
+		if cached and typeof(cached) == "Instance" and cached.Parent then return cached end
+		local ok, res = pcall(function() return ReplicatedStorage:WaitForChild("Remotes", 5):WaitForChild("Eggs", 5):WaitForChild("Hatch", 5) end)
+		if ok and res then Shared.Remote.cached = res; return res end
+		return nil
+	end
+
+	function EggRemoteInvoker.invokeHatch(star, quantity)
+		local start = os.clock()
+		local remote = EggRemoteInvoker.getRemote()
+		if not remote then return false, nil, "Remote not found" end
+		Shared.State.remoteBusy = true
+		local s, r = pcall(function() return remote:InvokeServer(star, quantity) end)
+		Shared.State.remoteBusy = false
+		Shared.State.lastResponseTime = os.clock() - start
+		return s, r
+	end
+
+	function UIManager.init(parentTabGroup)
+		local eggTab = parentTabGroup:Tab({ Name = "Auto Egg", Image = "rbxassetid://6031075931" })
+		local left = eggTab:Section({ Side = "Left" })
+		local right = eggTab:Section({ Side = "Right" })
+
+		left:Dropdown({
+			Name = "Select Star",
+			Options = STAR_OPTIONS,
+			Default = Shared.EggConfig.selectedStar,
+			Callback = function(v) EggConfigManager.setStar(type(v) == "table" and v[1] or v) end
+		})
+		left:Slider({
+			Name = "Eggs Per Hatch",
+			Default = Shared.EggConfig.eggsPerHatch,
+			Minimum = 1, Maximum = 10,
+			Callback = function(v) EggConfigManager.setEggsPerHatch(v) end
+		})
+		Shared.UI.Components.AutoToggle = left:Toggle({
+			Name = "Auto Open Egg",
+			Default = false,
+			Callback = function(v) if v then EggLoopController.startLoop() else EggLoopController.stopLoop() end end
+		})
+		Shared.UI.Components.StatusButton = right:Button({ Name = "Status: Stopped", Callback = function() notify("Status", Shared.State.currentStatus) end })
+		
+		task.spawn(function()
+			while true do
+				if Shared.UI.Components.StatusButton then safeSetComponentText(Shared.UI.Components.StatusButton, "Status: " .. Shared.State.currentStatus .. " | Eggs: " .. Shared.State.totalEggsOpened) end
+				task.wait(1)
+			end
+		end)
+	end
+
+	function EggLoopController.startLoop() Shared.State.isRunning = true; setStatus("Running", true) end
+	function EggLoopController.stopLoop() Shared.State.isRunning = false; setStatus("Stopped", true) end
+
+	function EggLoopController._mainLoop()
+		task.spawn(function()
+			while true do
+				if Shared.State.isRunning and RateLimiter.canCall() then
+					local s, r = EggRemoteInvoker.invokeHatch(Shared.EggConfig.selectedStar, Shared.EggConfig.eggsPerHatch)
+					if s then
+						Shared.State.totalCalls += 1
+						Shared.State.totalEggsOpened += Shared.EggConfig.eggsPerHatch
+						RateLimiter.recordCall()
+					end
+				end
+				task.wait(Shared.Config.LoopIdleWait)
+			end
+		end)
+	end
+
+	function AutoEggSystem.init(parentTabGroup)
+		PerformanceMonitor.init()
+		UIManager.init(parentTabGroup)
+		EggLoopController._mainLoop()
+		Shared.State.initialized = true
+	end
+
+	task.spawn(function() pcall(function() AutoEggSystem.init(tabGroups.Main) end) end)
+end
+
+--==================================================
+-- 🧭 ระบบ Auto Farm Monster (Advanced Combined System)
+--==================================================
+do
+	local AutoFarmSystem = {}
+	local Shared = {
+		Config = {
+			Debug = true,
+			MonsterRefreshInterval = 10,
+			IncrementalRescanInterval = 2,
+			LoopIdleInterval = 0.15,
+			DefaultScanInterval = 2.0,
+			NearCacheLifetime = 0.5,
+			MonsterStateCacheLifetime = 0.2,
+			WaitDeadPollInterval = 0.25,
+			TargetDeadTimeout = 180,
+			TeleportOffset = Vector3.new(0, 0, 3),
+			TeleportFallbackOffsets = {
+				Vector3.new(0, 0, 3),
+				Vector3.new(0, 3, 5),
+				Vector3.new(0, 5, 8),
+			},
+			PlacementCooldownMs = 350,
+			MaxErrorsBeforeSoftStop = 25,
+			PerformanceCheckEvery = 5,
+			LowFPSPauseSeconds = 1.5,
+			MinAcceptableFPS = 15,
+			LowFPS = 20,
+			DefaultFPS = 60,
+			UIKeybind = Enum.KeyCode.LeftControl,
+			MacLibFolder = "MoMoHub_UI_Only",
+			MobileToggleImage = MoMoLogo,
+			StatusNotifyThrottle = 1.0,
+		},
+		State = {
+			initialized = false,
+			initInProgress = false,
+			isFarming = false,
+			isPaused = false,
+			pauseUntil = 0,
+			stopRequested = false,
+			backgroundLoopRunning = false,
+			maintenanceLoopRunning = false,
+			currentTarget = nil,
+			currentStatus = "Idle",
+			lastStatusUpdate = 0,
+			killedCount = 0,
+			totalTeleports = 0,
+			errors = 0,
+			scanInterval = 2.0,
+			lastMonsterRefresh = 0,
+			lastPerformanceCheck = 0,
+			lastPlacementAt = 0,
+			lastNearCacheAt = 0,
+			nextLoopAt = 0,
+			currentSelectedIndex = 1,
+			farmMode = "SELECT",
+			selectedMonsterNames = {},
+			nearestCache = nil,
+			retryAttempts = {},
+			performance = {
+				currentFPS = 60,
+				frameCounter = 0,
+				frameAccumulator = 0,
+				lastSampleAt = os.clock(),
+			},
+		},
+		Caches = {
+			allMonsters = {},
+			uniqueNames = {},
+			flatMonsters = {},
+			monsterState = setmetatable({}, { __mode = "k" }),
+			deathBindings = setmetatable({}, { __mode = "k" }),
+		},
+		Connections = {
+			workspace = {},
+			enemyFolders = {},
+			system = {},
+		},
+		UI = {
+			MacLib = MacLib,
+			Window = Window,
+			TabGroup = tabGroups.Main,
+			Tabs = {},
+			Components = {},
+		},
+	}
+
+	local MonsterDiscoveryService = {}
+	local MonsterStateTracker = {}
+	local FarmModeSelector = {}
+	local TeleportationService = {}
+	local FarmCoordinator = {}
+	local UIManager = {}
+	local ErrorHandler = {}
+	local RetryManager = {}
+	local PerformanceMonitor = {}
+
+	local function log(level, message, ...)
+		if level == "DEBUG" and not Shared.Config.Debug then return end
+		local prefix = string.format("[AutoFarmSystem][%s] %s", level, message)
+		if select("#", ...) > 0 then warn(prefix, ...) else warn(prefix) end
+	end
+
+	local function safeDisconnect(connection)
+		if connection and typeof(connection) == "RBXScriptConnection" then pcall(function() connection:Disconnect() end) end
+	end
+
+	local function clearConnectionList(list)
+		if not list then return end
+		for i = 1, #list do safeDisconnect(list[i]) end
+		table.clear(list)
+	end
+
+	local function shallowCopyArray(arr)
+		local newArr = {}
+		if type(arr) ~= "table" then return newArr end
+		for i = 1, #arr do newArr[i] = arr[i] end
+		return newArr
+	end
+
+	local function now() return os.clock() end
+	local function nowMs() return math.floor(os.clock() * 1000) end
+
+	local function normalizeMode(mode)
+		if type(mode) ~= "string" then return "SELECT" end
+		mode = string.upper(mode)
+		return (mode == "NEAR") and "NEAR" or "SELECT"
+	end
+
+	local function matchesWorldName(name) return string.match(name, "^World%d+$") ~= nil end
+	local function getCharacterRoot()
+		local char = LP.Character
+		if not (char and char.Parent) then return nil end
+		local hrp = char:FindFirstChild("HumanoidRootPart")
+		return (hrp and hrp:IsA("BasePart")) and hrp or nil
+	end
+
+	local function getMonsterRoot(monster)
+		if not (monster and monster.Parent) then return nil end
+		local hrp = monster:FindFirstChild("HumanoidRootPart") or monster.PrimaryPart or monster:FindFirstChildWhichIsA("BasePart")
+		return (hrp and hrp:IsA("BasePart")) and hrp or nil
+	end
+
+	local function getDistanceSquared(a, b)
+		local delta = a - b
+		return delta.X * delta.X + delta.Y * delta.Y + delta.Z * delta.Z
+	end
+
+	local function setStatus(text, notify)
+		Shared.State.currentStatus = text
+		UIManager.updateStatusText(text)
+		if notify then
+			local cur = now()
+			if cur - Shared.State.lastStatusUpdate >= Shared.Config.StatusNotifyThrottle then
+				Shared.State.lastStatusUpdate = cur
+				MoMoNotify({Title = "Auto Farm", Desc = text, Time = 2})
+			end
+		end
+	end
+
+	--==================================================
+	-- Services Implementation
+	--==================================================
+
+	function RetryManager.shouldRetry(op, attempts)
+		local limits = { SCAN_MONSTERS = 3, CHARACTER_MISSING = 5, TELEPORT_FAILED = 2, TELEPORT_COOLDOWN = 5, WAIT_UNTIL_DEAD_TIMEOUT = 2 }
+		return attempts <= (limits[op] or 2)
+	end
+
+	function RetryManager.getRetryDelay(attempts)
+		return math.min(250 * (2 ^ (math.max(1, attempts) - 1)), 2500)
+	end
+
+	function ErrorHandler.handle(errType, context, retryCallback)
+		if errType == "COROUTINE_CRASH" or errType == "CRITICAL_PERFORMANCE" then return "STOP" end
+		local op = context and context.operation or errType
+		local attempts = (Shared.State.retryAttempts[op] or 0) + 1
+		Shared.State.retryAttempts[op] = attempts
+		if RetryManager.shouldRetry(op, attempts) then
+			if retryCallback then task.delay(RetryManager.getRetryDelay(attempts)/1000, function() pcall(retryCallback) end) end
+			return "RETRY"
+		end
+		return "SKIP"
+	end
+
+	function PerformanceMonitor.init()
+		if Shared.Connections.system.PerfConn then return end
+		local conn = game:GetService("RunService").Heartbeat:Connect(function(dt)
+			local perf = Shared.State.performance
+			perf.frameCounter += 1
+			perf.frameAccumulator += dt
+			if perf.frameAccumulator >= 1 then
+				perf.currentFPS = perf.frameCounter / perf.frameAccumulator
+				perf.frameCounter, perf.frameAccumulator, perf.lastSampleAt = 0, 0, now()
+			end
+		end)
+		Shared.Connections.system.PerfConn = conn
+		table.insert(Shared.Connections.system, conn)
+	end
+
+	function MonsterStateTracker.isAlive(monster)
+		if not (monster and monster.Parent) then return false end
+		local cache = Shared.Caches.monsterState[monster]
+		if cache and (now() - cache.timestamp) <= Shared.Config.MonsterStateCacheLifetime then return cache.alive end
+		local attackable = monster:GetAttribute("Attackable")
+		local turnable = monster:GetAttribute("Turnable")
+		local alive = (attackable == true and turnable == true)
+		Shared.Caches.monsterState[monster] = { alive = alive, timestamp = now() }
+		return alive
+	end
+
+	function MonsterStateTracker.waitUntilDead(monster, timeout)
+		local deadline = now() + (timeout or Shared.Config.TargetDeadTimeout)
+		while now() < deadline do
+			if not MonsterStateTracker.isAlive(monster) then return true end
+			task.wait(Shared.Config.WaitDeadPollInterval)
+		end
+		return not MonsterStateTracker.isAlive(monster)
+	end
+
+	function MonsterDiscoveryService._markDirty() Shared.State.lastMonsterRefresh = 0 end
+
+	function MonsterDiscoveryService.refreshMonsterList()
+		local ok, err = pcall(function()
+			local monstersByName, uniqueNames, flatMonsters, seenNames = {}, {}, {}, {}
+			for _, world in ipairs(workspace:GetChildren()) do
+				if matchesWorldName(world.Name) then
+					local ef = world:FindFirstChild("Enemy")
+					if ef then
+						for _, obj in ipairs(ef:GetChildren()) do
+							if obj:IsA("Model") then
+								local name = obj.Name
+								if not monstersByName[name] then monstersByName[name] = {} end
+								table.insert(monstersByName[name], obj)
+								table.insert(flatMonsters, obj)
+								if not seenNames[name] then seenNames[name] = true; table.insert(uniqueNames, name) end
+							end
+						end
+					end
+				end
+			end
+			table.sort(uniqueNames)
+			Shared.Caches.allMonsters, Shared.Caches.uniqueNames, Shared.Caches.flatMonsters = monstersByName, uniqueNames, flatMonsters
+			Shared.State.lastMonsterRefresh = now()
+		end)
+		return ok
+	end
+
+	function MonsterDiscoveryService.getNearestMonster()
+		local cur = now()
+		if Shared.State.nearestCache and Shared.State.nearestCache.Parent and cur - Shared.State.lastNearCacheAt <= Shared.Config.NearCacheLifetime then
+			if MonsterStateTracker.isAlive(Shared.State.nearestCache) then return Shared.State.nearestCache end
+		end
+		local hrp = getCharacterRoot()
+		if not hrp then return nil end
+		local myPos, nearest, bestDist = hrp.Position, nil, math.huge
+		for _, monster in ipairs(Shared.Caches.flatMonsters) do
+			if monster.Parent and MonsterStateTracker.isAlive(monster) then
+				local mRoot = getMonsterRoot(monster)
+				if mRoot then
+					local d2 = getDistanceSquared(myPos, mRoot.Position)
+					if d2 < bestDist then bestDist, nearest = d2, monster end
+				end
+			end
+		end
+		Shared.State.nearestCache, Shared.State.lastNearCacheAt = nearest, cur
+		return nearest
+	end
+
+	function FarmCoordinator.stopFarming()
+		Shared.State.isFarming, Shared.State.isPaused, Shared.State.currentTarget = false, false, nil
+		setStatus("Stopped", true)
+	end
+
+	function FarmCoordinator.startFarming()
+		if Shared.State.farmMode == "SELECT" and #Shared.State.selectedMonsterNames == 0 then
+			MoMoNotify({Title = "Auto Farm", Desc = "Please select monsters first", Time = 3})
+			return false
+		end
+		Shared.State.isFarming, Shared.State.isPaused, Shared.State.nextLoopAt = true, false, 0
+		setStatus("Running", true)
+		return true
+	end
+
+	function FarmCoordinator._tick()
+		if not Shared.State.isFarming then return end
+		local cur = now()
+		if Shared.State.isPaused and cur < Shared.State.pauseUntil then return end
+		if cur < Shared.State.nextLoopAt then return end
+
+		local hrp = getCharacterRoot()
+		if not hrp then return end
+
+		if cur - Shared.State.lastMonsterRefresh >= Shared.Config.MonsterRefreshInterval then
+			MonsterDiscoveryService.refreshMonsterList()
+			UIManager.refreshMonsterDropdown()
+		end
+
+		local target
+		if Shared.State.farmMode == "SELECT" then
+			local names = Shared.State.selectedMonsterNames
+			if #names > 0 then
+				if Shared.State.currentSelectedIndex > #names then Shared.State.currentSelectedIndex = 1 end
+				local name = names[Shared.State.currentSelectedIndex]
+				local instances = Shared.Caches.allMonsters[name] or {}
+				for _, m in ipairs(instances) do if m.Parent and MonsterStateTracker.isAlive(m) then target = m; break end end
+				if not target then Shared.State.currentSelectedIndex = (Shared.State.currentSelectedIndex % #names) + 1 end
+			end
+		else
+			target = MonsterDiscoveryService.getNearestMonster()
+		end
+
+		Shared.State.currentTarget = target
+		if not target then
+			setStatus("Waiting for target")
+			Shared.State.nextLoopAt = cur + Shared.State.scanInterval
+			return
+		end
+
+		-- Teleport and Kill (Normal Mode)
+		local mRoot = getMonsterRoot(target)
+		if mRoot and (nowMs() - Shared.State.lastPlacementAt >= Shared.Config.PlacementCooldownMs) then
+			hrp.CFrame = mRoot.CFrame * CFrame.new(Shared.Config.TeleportOffset)
+			Shared.State.lastPlacementAt, Shared.State.totalTeleports = nowMs(), Shared.State.totalTeleports + 1
+			setStatus("Fighting " .. target.Name)
+			if MonsterStateTracker.waitUntilDead(target) then
+				Shared.State.killedCount += 1
+				if #Shared.State.selectedMonsterNames > 0 then
+					Shared.State.currentSelectedIndex = (Shared.State.currentSelectedIndex % #Shared.State.selectedMonsterNames) + 1
+				end
+			end
+		end
+		Shared.State.nextLoopAt = now() + 0.1
+	end
+
+	--==================================================
+	-- UI Integration
+	--==================================================
+
+	function UIManager.updateStatusText(text)
+		local btn = Shared.UI.Components.StatusDisplay
+		if btn and btn.SetName then btn:SetName("Status: " .. text) end
+	end
+
+	function UIManager.refreshMonsterDropdown()
+		local dd = Shared.UI.Components.MonsterDropdown
+		if not dd then return end
+		local options = Shared.Caches.uniqueNames
+		if #options == 0 then options = {"None"} end
+		pcall(function()
+			dd:ClearOptions()
+			dd:InsertOptions(options)
+		end)
+	end
+
+	function UIManager.init()
+		local farmTab = Shared.UI.TabGroup:Tab({ Name = "Auto Farm", Image = "rbxassetid://6031092050" })
+		local farmSec = farmTab:Section({ Side = "Left" })
+		Shared.UI.Components.FarmSection = farmSec
+
+		farmSec:Header({ Name = "Monster Selection" })
+		Shared.UI.Components.MonsterDropdown = farmSec:Dropdown({
+			Name = "Select Monster",
+			Options = Shared.Caches.uniqueNames,
+			Default = {},
+			Search = true,
+			Multi = true,
+			Callback = function(val)
+				local selected = {}
+				local opts = Shared.Caches.uniqueNames
+				if type(val) == "table" then
+					for _, v in ipairs(val) do
+						local name = (type(v) == "number") and opts[v] or v
+						if name and name ~= "None" then table.insert(selected, name) end
+					end
+				elseif type(val) == "string" and val ~= "None" then table.insert(selected, val) end
+				Shared.State.selectedMonsterNames = selected
+				MoMoNotify({Title = "Selected", Desc = (#selected > 0 and table.concat(selected, ", ") or "None"), Time = 2})
+			end
+		})
+
+		farmSec:Dropdown({
+			Name = "Farm Mode",
+			Options = {"SELECT", "NEAR"},
+			Default = "SELECT",
+			Callback = function(v) Shared.State.farmMode = v; setStatus("Mode: " .. v, true) end
+		})
+
+		farmSec:Button({ Name = "Refresh List", Callback = function() MonsterDiscoveryService.refreshMonsterList(); UIManager.refreshMonsterDropdown() end })
+
+		farmSec:Header({ Name = "Farm Control" })
+
+		Shared.UI.Components.FarmToggle = farmSec:Toggle({
+			Name = "Auto Farm",
+			Default = false,
+			Callback = function(v) if v then if not FarmCoordinator.startFarming() then task.delay(0.1, function() pcall(function() Shared.UI.Components.FarmToggle:SetValue(false) end) end) end else FarmCoordinator.stopFarming() end end
+		})
+
+		farmSec:Button({ Name = "Stop Farm", Callback = function() FarmCoordinator.stopFarming(); pcall(function() Shared.UI.Components.FarmToggle:SetValue(false) end) end })
+
+		local statBtn = farmSec:Button({ Name = "Show Stats", Callback = function() MoMoNotify({Title="Stats", Desc=string.format("Kills: %d | TPs: %d", Shared.State.killedCount, Shared.State.totalTeleports), Time=4}) end })
+
+		Shared.UI.Components.StatusDisplay = farmSec:Button({ Name = "Status: Idle", Callback = function() MoMoNotify({Title="Status", Desc=Shared.State.currentStatus, Time=2}) end })
+	end
+
+
+	function AutoFarmSystem.init()
+		PerformanceMonitor.init()
+		MonsterDiscoveryService.refreshMonsterList()
+		UIManager.init()
+		task.spawn(FarmCoordinator._tick_loop)
+	end
+
+	function FarmCoordinator._tick_loop()
+		Shared.State.initialized = true
+		while Shared.State.initialized do
+			pcall(FarmCoordinator._tick)
+			task.wait(Shared.Config.LoopIdleInterval)
+		end
+	end
+
+	AutoFarmSystem.init()
+end
+
+MacLib:LoadAutoLoadConfig()
+MoMoNotify({Title = "MoMoHub", Desc = "UI Template Loaded!", Time = 4})
+
