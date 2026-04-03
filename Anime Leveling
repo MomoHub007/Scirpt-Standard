@@ -1014,7 +1014,6 @@ do
 			Options = Shared.Caches.uniqueNames,
 			Default = {},
 			Search = true,
-			Multi = true,
 			Callback = function(val)
 				local selected = {}
 				local opts = Shared.Caches.uniqueNames
