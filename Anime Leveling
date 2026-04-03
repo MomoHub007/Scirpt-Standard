@@ -21,7 +21,7 @@ local MoMoConfig = {
 local MacLib = loadstring(game:HttpGet("https://github.com/biggaboy212/Maclib/releases/latest/download/maclib.txt"))()
 
 local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-local windowSize = isMobile and UDim2.fromOffset(420, 340) or UDim2.fromOffset(868, 550)
+local windowSize = isMobile and UDim2.fromOffset(868, 550) or UDim2.fromOffset(868, 550)
 
 local Window = MacLib:Window({
     Title = "MOMOHUB",
@@ -52,7 +52,7 @@ task.spawn(function()
                     -- 1.0 = 100% (ปกติ)
                     -- 0.8 = 80% (เล็กลงนิดหน่อย กำลังสวย)
                     -- 0.7 = 70% (เล็กกะทัดรัด)
-                    scale.Scale = 1
+                    scale.Scale = 0.8
                     
                     scale.Parent = child
                 end
