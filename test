@@ -2,7 +2,7 @@
 -- ⏳ [ANTI-CRASH]: รอให้เกมและตัวละครโหลดเสร็จก่อนรันสคริปต์
 -- =====================================================================
 if not game:IsLoaded() then game.Loaded:Wait() end
-print = function(...) end
+-- print = function(...) end
 repeat task.wait(7) until game:GetService("Players").LocalPlayer and game:GetService("Players").LocalPlayer.Character and game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
 
 
@@ -459,13 +459,13 @@ local function StartLobbyMaster()
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if not (char and hrp) then return false end
 
-        -- 🎯 ข้อมูลประตูวาร์ป: พิกัด + ชื่อสคริปต์ Remote ประจำตู้
-        local portals = {
-            { pos = Vector3.new(2723, -115, -1990), script = "Script448" }, -- ประตู 1
-            { pos = Vector3.new(2723, -115, -2019), script = "Script716" }, -- ประตู 2
-            { pos = Vector3.new(2723, -115, -2049), script = "Script58" },  -- ประตู 3
-            { pos = Vector3.new(2723, -115, -2079), script = "Script192" }, -- ประตู 4
-            { pos = Vector3.new(2723, -115, -2108), script = "Script381" }  -- ประตู 5
+        -- 🎯 รายชื่อพิกัดทางเข้าด่านทั้งหมด
+        local portalCoords = {
+            Vector3.new(2723, -115, -1990),
+            Vector3.new(2723, -115, -2019),
+            Vector3.new(2723, -115, -2049),
+            Vector3.new(2723, -115, -2079),
+            Vector3.new(2723, -115, -2108)
         }
 
         _G.MoMoStatus("กำลังหาทางเข้าด่าน...")
@@ -476,21 +476,17 @@ local function StartLobbyMaster()
             hrp = char and char:FindFirstChild("HumanoidRootPart")
             if not hrp then task.wait(1); continue end
 
-            -- ดึงข้อมูลพิกัดและสคริปต์ของตู้เป้าหมายปัจจุบัน
-            local currentPortal = portals[i]
-            local targetPos = currentPortal.pos
-            local currentScript = currentPortal.script
-
-            print(string.format("🚀 [AttemptJoinPortals] ลองวาร์ปไปจุดที่ %d (ใช้รีโมท: %s)", i, currentScript))
+            local targetPos = portalCoords[i]
+            print(string.format("🚀 [AttemptJoinPortals] ลองวาร์ปไปจุดที่ %d: %s", i, tostring(targetPos)))
             
             -- ✅ Step 1: วาร์ป HRP ไปพิกัดประตูที่กำหนด
             hrp.CFrame = CFrame.new(targetPos)
             task.wait(1.5)  
 
-            -- ✅ Step 2: เลือก Stage และกด Start ด้วย Remote ประจำประตูนั้นๆ
-            pcall(function() inputRemote:FireServer(currentScript .. "Level", "-1", false) end)
+            -- ✅ Step 2: เลือก Stage และกด Start ด้วย Remote
+            pcall(function() inputRemote:FireServer("Script448Level", "-1", false) end)
             task.wait(1)
-            pcall(function() inputRemote:FireServer(currentScript .. "Start") end)
+            pcall(function() inputRemote:FireServer("Script448Start") end)
 
             if _G.MoMoStatus then _G.MoMoStatus(string.format("รอ 5 วิ... เช็คระยะหน้าประตู %d", i)) end
 
@@ -532,7 +528,7 @@ local function StartLobbyMaster()
             -- ✅ Step 6: ถ้ายังติดอยู่ ให้ขยับไปจุดต่อไป
             if isStuck then
                 i = i + 1
-                if i > #portals then
+                if i > #portalCoords then
                     i = 1 -- ถ้าลองครบทุกตู้แล้ว ให้วนกลับมาเริ่มตู้แรกใหม่
                     print("🔄 [AttemptJoinPortals] ลองครบทุกประตูแล้ว -> วนกลับมาเริ่มจุดที่ 1 ใหม่!")
                 end
@@ -951,7 +947,7 @@ end
         
         local hud = LocalPlayer.PlayerGui:FindFirstChild("HUD")
         local slotTargets = {
-            { slot = 1, names = {"Android17", "KidLuffy", "Ikki(HalfMask)", "Ikki (HalfMask)", "JotaroKujo" , "Bakugo(Blazing)", "Toichiro", "SaberNew", "Johnny2" ,"Luffy (4th Gear)"} }
+            { slot = 1, names = {"Android17", "KidLuffy", "Ikki(HalfMask)", "JotaroKujo" , "Bakugo(Blazing)", "Toichiro", "SaberNew", "Johnny2" ,"Luffy (4th Gear)"} }
         }
 
         print("🛠️ [Debug] 3. เริ่มสแกนหา 'ดาว' จากหน้า UI (StarMap)...")
@@ -1198,7 +1194,7 @@ end
                     task.wait(999) -- แช่แข็งรอเกมเตะ
                 end
 
-                if _G.MoMoStatus then _G.MoMoStatus("กำลังกดข้ามบทสนทนา Tutorial... (" .. tutStuckCount .. "/20)") end
+                if _G.MoMoStatus then _G.MoMoStatus("กำลังกดข้ามบทสนทนา Tutorial... (" .. tutStuckCount .. "/600)") end
                 Tutorial.SkipDialogueAndSummon()
                 continue -- วนลูปสคิปไปเรื่อยๆ จนกว่าหน้าต่างจะปิด
             else
@@ -1292,7 +1288,7 @@ end
 
             if #equippedUnits > 0 then
                 -- มีตัวละครใส่อยู่ เช็คว่าตรงกับ Target หรือไม่
-                local targets = {"android17", "kidluffy", "ikki(halfmask)", "ikki(halfmask)", "jotarokujo" , "bakugo(blazing)", "toichiro", "sabernew", "johnny2" ,"luffy(4thgear)"}
+                local targets = {"android17", "kidluffy", "ikki(halfmask)", "jotarokujo" , "bakugo(blazing)", "toichiro", "sabernew", "johnny2" ,"luffy(4thgear)"}
                 local hasTargetEquipped = false
                 
                 for _, eqUnit in ipairs(equippedUnits) do
