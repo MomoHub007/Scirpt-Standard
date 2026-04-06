@@ -469,12 +469,9 @@ local function StartLobbyMaster()
         }
 
         _G.MoMoStatus("กำลังหาทางเข้าด่าน...")
-
-        -- 🎯 ใช้ตัวแปร i เพื่อคอยนับว่าตอนนี้อยู่จุดที่เท่าไหร่
         local i = 1 
         
         while _G.LobbyActive do
-            -- เช็คตัวละครอีกรอบเผื่อตายหรือบั๊กระหว่างรอ
             char = LocalPlayer.Character
             hrp = char and char:FindFirstChild("HumanoidRootPart")
             if not hrp then task.wait(1); continue end
@@ -482,33 +479,59 @@ local function StartLobbyMaster()
             local targetPos = portalCoords[i]
             print(string.format("🚀 [AttemptJoinPortals] ลองวาร์ปไปจุดที่ %d: %s", i, tostring(targetPos)))
             
-            -- ✅ Step 1: วาร์ป HRP ไปพิกัดที่กำหนด
+            -- ✅ Step 1: วาร์ป HRP ไปพิกัดประตูที่กำหนด
             hrp.CFrame = CFrame.new(targetPos)
-            task.wait(1.5)  -- รอให้ตัวละครลงพื้นและโหลด
+            task.wait(1.5)  
 
             -- ✅ Step 2: เลือก Stage และกด Start ด้วย Remote
             pcall(function() inputRemote:FireServer("Script448Level", "-1", false) end)
             task.wait(1)
             pcall(function() inputRemote:FireServer("Script448Start") end)
 
-            if _G.MoMoStatus then _G.MoMoStatus(string.format("ส่งคำสั่งเข้าด่าน %d... รอผล 7 วิ", i)) end
+            if _G.MoMoStatus then _G.MoMoStatus(string.format("รอ 5 วิ... เช็คระยะหน้าประตู %d", i)) end
 
-            -- ✅ Step 3: ดีเลย์ 7 วินาที รอให้เกมประมวลผลดึงเข้าด่าน
-            task.wait(7)
+            -- ✅ Step 3: รอ 5 วินาทีตามเงื่อนไข
+            task.wait(5)
 
-            -- ✅ Step 4: เช็คสถานะตรงๆ เลยว่าเกมเตะเราออกจาก Lobby หรือยัง
-            if _G.LobbyActive then
-                print("⚠️ [AttemptJoinPortals] 7 วิผ่านไป ยังเข้าไม่ได้ -> เตรียมย้ายจุด...")
+            -- ✅ Step 4: ถ้าระบบเกมเตะออก Lobby ไปแล้ว ถือว่าเข้าด่านสำเร็จ
+            if not _G.LobbyActive then
+                print("✅ [AttemptJoinPortals] วาร์ปเข้าด่านสำเร็จ!")
+                return true
+            end
+
+            -- ✅ Step 5: สแกนระยะห่าง 500 Studs จาก workspace.Queue.Floor
+            local isStuck = false
+            pcall(function()
+                local queueFloor = workspace:FindFirstChild("Queue") and workspace.Queue:FindFirstChild("Floor")
+                local floorPos = nil
                 
-                -- เลื่อนไปพิกัดถัดไป ถ้าเกิน 5 ให้กลับไปเริ่ม 1 ใหม่
+                -- หาพิกัดของ Floor (รองรับทั้งแบบ Part ธรรมดา และแบบ Model)
+                if queueFloor and queueFloor:IsA("BasePart") then
+                    floorPos = queueFloor.Position
+                elseif queueFloor and queueFloor:IsA("Model") and queueFloor.PrimaryPart then
+                    floorPos = queueFloor.PrimaryPart.Position
+                end
+                
+                if floorPos then
+                    local distance = (hrp.Position - floorPos).Magnitude
+                    if distance <= 500 then
+                        isStuck = true
+                        print(string.format("⚠️ [AttemptJoinPortals] ยังติดอยู่หน้าประตู (ระยะ: %.1f studs) -> เตรียมย้ายจุด!", distance))
+                    end
+                else
+                    -- ถ้าหา Floor ไม่เจอ (เกมอาจโหลดไม่ทัน) แต่ยังอยู่ Lobby ก็เหมาว่าติดบั๊ก ให้เปลี่ยนประตูเช่นกัน
+                    isStuck = true
+                    print("⚠️ [AttemptJoinPortals] หา Queue.Floor ไม่เจอ แต่ยังอยู่ Lobby -> ย้ายจุดชัวร์กว่า!")
+                end
+            end)
+
+            -- ✅ Step 6: ถ้ายังติดอยู่ ให้ขยับไปจุดต่อไป
+            if isStuck then
                 i = i + 1
                 if i > #portalCoords then
-                    i = 1
+                    i = 1 -- ถ้าลองครบทุกตู้แล้ว ให้วนกลับมาเริ่มตู้แรกใหม่
                     print("🔄 [AttemptJoinPortals] ลองครบทุกประตูแล้ว -> วนกลับมาเริ่มจุดที่ 1 ใหม่!")
                 end
-            else
-                print("✅ [AttemptJoinPortals] กำลังวาร์ปเข้าด่านสำเร็จ!")
-                return true
             end
         end
 
@@ -1473,7 +1496,7 @@ local function StartAutoPlay()
                 end
 
                 -- โฉ 3. เธฃเธฐเธเธเน€เธฃเนเธเธเธงเธฒเธกเน€เธฃเนเธง (เน€เธเธดเธ”เน€เธกเธทเนเธญเธ–เธถเธ Wave 2 เน€เธเนเธเธ•เนเธเนเธ)
-                if currentWave >= 2 then
+                if currentWave >= 1 then
                     local fastForward = hud:FindFirstChild("FastForward")
                     if fastForward then
                         local speedTextObj = (fastForward:FindFirstChild("SpeedText") and fastForward.SpeedText:FindFirstChild("TextLabel")) or fastForward:FindFirstChild("TextLabel")
@@ -1827,7 +1850,7 @@ local function UpdateBotState()
                 if targetObj:IsA("BasePart") then targetPos = targetObj.Position
                 elseif targetObj:IsA("Model") then targetPos = targetObj.PrimaryPart and targetObj.PrimaryPart.Position or (targetObj:FindFirstChildWhichIsA("BasePart", true) and targetObj:FindFirstChildWhichIsA("BasePart", true).Position) end
 
-                if targetPos and (rootPart.Position - targetPos).Magnitude <= 2000 then
+                if targetPos and (rootPart.Position - targetPos).Magnitude <= 5000 then
                     isInLobby = true
                 end
             end
