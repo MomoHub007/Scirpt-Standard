@@ -11,6 +11,7 @@ local maps = {
     [111446873000464] = { normal = "https://raw.githubusercontent.com/MomoHub007/Anime-Ranger-X/refs/heads/main/script-premium" },
     [126297188712308] = { normal = "https://raw.githubusercontent.com/MomoHub007/Scirpt-Standard/refs/heads/main/Anime%20Overload" },
 	[80353351682367] = { normal = "https://raw.githubusercontent.com/MomoHub007/Scirpt-Standard/refs/heads/main/Anime%20Overload" },
+	[78754030900809] = { normal = "https://raw.githubusercontent.com/MomoHub007/Scirpt-Standard/refs/heads/main/Anime%20Leveling" },
     -- แมพ Sailor Piece (ใส่สคริปต์ไก่ตันให้ครบทุก PlaceId ของแมพนี้)
     [77747658251236] = { 
         normal = "https://raw.githubusercontent.com/MomoHub007/Sailor-Piece/refs/heads/main/script",
