@@ -1338,7 +1338,8 @@ end
 
             if #equippedUnits > 0 then
                 -- มีตัวละครใส่อยู่ เช็คว่าตรงกับ Target หรือไม่
-                local targets = {"android17", "kidluffy", "ikki(halfmask)", "ikki(halfmask)", "jotarokujo" , "bakugo(blazing)", "toichiro", "sabernew", "johnny2" ,"luffy(4thgear)"}
+                -- 🎯 เปลี่ยนมาใช้คีย์เวิร์ดแบบครอบคลุม ป้องกันโมเดล 3D ชื่อไม่ตรงกับการ์ด
+                local targets = {"android17", "luffy", "ikki", "jotaro", "bakugo", "toichiro", "saber", "johnny", "yoruichi"}
                 local hasTargetEquipped = false
                 
                 for _, eqUnit in ipairs(equippedUnits) do
@@ -1477,9 +1478,10 @@ local function StartAutoPlay()
         local VIM = game:GetService("VirtualInputManager")
         local guiService = game:GetService("GuiService")
         
-        -- ๐ง  เธเธฑเธเธเนเธเธฑเธเน€เธเนเธเธงเนเธฒเธ•เธญเธเธเธตเนเนเธเนเธ•เธฑเธง Target เธซเธฃเธทเธญเนเธเนเธ•เธฑเธงเธชเธณเธฃเธญเธ (4 เธ”เธฒเธง) เนเธเธเธญเธขเธนเน
+        -- 🧠 ฟังก์ชันเช็คว่าตอนนี้ใช้ตัว Target หรือใช้ตัวสำรอง (4 ดาว) แบกอยู่
         local function CheckIfUsingFallback()
-            local targets = {"android17", "kidluffy", "ikki(halfmask)", "jotarokujo", "bakugo(blazing)", "toichiro", "sabernew", "johnny2" , "luffy(4thGear)"}
+            -- 🎯 ใช้คีย์เวิร์ดสั้นๆ เหมือนตอนจัดทีม
+            local targets = {"android17", "luffy", "ikki", "jotaro", "bakugo", "toichiro", "saber", "johnny", "yoruichi"}
             local hud = LocalPlayer.PlayerGui:FindFirstChild("HUD")
             local isTargetEquipped = false
             
