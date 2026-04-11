@@ -1178,24 +1178,25 @@ end
                 
                 -- 🚨 ดักจับเลเวล 10 ทันทีที่รู้ว่าของหมด!
                 if GetPlayerLevel() >= 10 then
-                    -- 🎯 ดักจับ: เช็คก่อนรับรางวัลว่ามี Target หรือยัง ถ้ามีแล้วให้ตัดจบลูปเลย!
-                    if HasTargetUnitInInventory() then
-                        print("⏭️ [LV10 Reward] มีตัว Target ในกระเป๋าแล้ว -> ข้ามการรับโค้ดและสุ่มแคปซูล!")
-                        return true
-                    end
+                    if HasTargetUnitInInventory() then return true end
                     
-                    print("🚨 [Fallback] เลเวล 10+ แล้ว! ทำการใส่โค้ด รับแคปซูล และรีจอยทันที!")
-                    if _G.MoMoStatus then _G.MoMoStatus("LV.10+ รับรางวัล & รีจอย...") end
+                    if _G.MoMoStatus then _G.MoMoStatus("LV.10+ รับรางวัล & รอรีจอย...") end
                     
                     -- ยิงโค้ด
                     pcall(function() serverRemote:InvokeServer("Code", "bigcode3") end)
                     pcall(function() inputRemote:FireServer("Code", "bigcode3") end)
-                    task.wait(1.5)
+                    task.wait(3) -- เพิ่มจาก 1.5 เป็น 3
+                    
+                    -- เปิดแคปซูล
                     pcall(function() serverRemote:InvokeServer("Consume", "Reward Capsule", nil, 1) end)
-                    pcall(function() serverRemote:InvokeServer("Consume", "Reward Capsule", 1) end)
-                    task.wait(1.5)
+                    pcall(function() inputRemote:FireServer("Consume", "Reward Capsule", nil, 1) end)
+                    
+                    -- เพิ่มเวลารอเพื่อให้มั่นใจว่าของเข้าตัวก่อนเตะตัวเองออก
+                    print("⏳ หน่วงเวลาเพื่อให้ของเข้ากระเป๋าก่อนรีจอย...")
+                    task.wait(5) 
+                    
                     Tutorial.Rejoin()
-                    task.wait(999) -- แช่แข็งรอเกมเตะ
+                    task.wait(999) 
                 end
                 
                 return true -- ส่งไม้ต่อให้ระบบใส่ 4 ดาว
@@ -1288,23 +1289,37 @@ end
             local hud = LocalPlayer.PlayerGui:FindFirstChild("HUD")
             if not hud then continue end
             
-            -- ─── 0. ดักจับ LV.10+ ใน Lobby ───
+            -- ─── 0. ดักจับ LV.10+ ใน Lobby (เวอร์ชันแก้บั๊กข้ามขั้นตอน) ───
             local currentLvl = GetPlayerLevel()
-            print("📊 [System] บอทตรวจพบเลเวลปัจจุบันของคุณคือ: " .. currentLvl)
-
             if currentLvl >= 10 and not HasTargetUnitInInventory() then
-                print("🚨 [Lobby] ตรวจพบ LV.10+ และไม่มี Target -> ใส่โค้ด รับแคปซูล รีจอยทันที!")
-                if _G.MoMoStatus then _G.MoMoStatus("LV."..currentLvl.."+ กำลังรับเป้าหมาย & รีจอย!") end
+                print("🚨 [Lobby] ตรวจพบ LV.10+ -> เริ่มขั้นตอนรับของรางวัล...")
+                if _G.MoMoStatus then _G.MoMoStatus("LV.10+ กำลังกรอกโค้ด & เปิดแคปซูล...") end
                 
+                -- 1. ยิงโค้ด (ยิงทั้งสองรีโมทเพื่อกันเหนียว)
                 pcall(function() serverRemote:InvokeServer("Code", "bigcode3") end)
-                task.wait(2)
+                pcall(function() inputRemote:FireServer("Code", "bigcode3") end)
+                print("✅ ยิงโค้ด bigcode3 เรียบร้อย รอ 3 วิ...")
+                task.wait(3) 
                 
-                pcall(function() serverRemote:InvokeServer("Consume", "Reward Capsule", nil, 1) end)
-                pcall(function() serverRemote:InvokeServer("Consume", "Reward Capsule", 1) end)
-                pcall(function() serverRemote:InvokeServer("Consume", "Reward Capsule") end)
-                task.wait(2.5)
+                -- 2. ยิงคำสั่งเปิดแคปซูล (เพิ่มความถี่และรูปแบบที่หลากหลาย)
+                print("🎁 กำลังเปิด Reward Capsule...")
+                local commands = {
+                    function() serverRemote:InvokeServer("Consume", "Reward Capsule", nil, 1) end,
+                    function() serverRemote:InvokeServer("Consume", "Reward Capsule", 1) end,
+                    function() inputRemote:FireServer("Consume", "Reward Capsule", nil, 1) end,
+                    function() inputRemote:FireServer("Consume", "Reward Capsule", 1) end
+                }
+                for _, cmd in ipairs(commands) do
+                    pcall(cmd)
+                    task.wait(0.5)
+                end
                 
-                print("🔄 [Lobby] กำลังรีจอยเซิร์ฟเวอร์เพื่ออัปเดตกระเป๋า...")
+                -- 3. เพิ่มเวลาหน่วงก่อนรีจอย (สำคัญมากเพื่อให้ Data Save ทัน)
+                if _G.MoMoStatus then _G.MoMoStatus("รับของเสร็จแล้ว รอเซิร์ฟเวอร์บันทึก 5 วิ...") end
+                print("⏳ รอ 5 วินาทีก่อนรีจอย...")
+                task.wait(5)
+                
+                print("🔄 กำลังรีจอย...")
                 Tutorial.Rejoin()
                 task.wait(999) 
             end
@@ -1339,7 +1354,7 @@ end
             if #equippedUnits > 0 then
                 -- มีตัวละครใส่อยู่ เช็คว่าตรงกับ Target หรือไม่
                 -- 🎯 เปลี่ยนมาใช้คีย์เวิร์ดแบบครอบคลุม ป้องกันโมเดล 3D ชื่อไม่ตรงกับการ์ด
-                local targets = {"android17", "luffy", "ikki", "jotaro", "bakugo", "toichiro", "saber", "johnny", "yoruichi"}
+                local targets = {"android17", "luffy", "ikki", "jotaro", "bakugo", "toichiro", "sabernew", "johnny2", "yoruichi"}
                 local hasTargetEquipped = false
                 
                 for _, eqUnit in ipairs(equippedUnits) do
@@ -1481,7 +1496,7 @@ local function StartAutoPlay()
         -- 🧠 ฟังก์ชันเช็คว่าตอนนี้ใช้ตัว Target หรือใช้ตัวสำรอง (4 ดาว) แบกอยู่
         local function CheckIfUsingFallback()
             -- 🎯 ใช้คีย์เวิร์ดสั้นๆ เหมือนตอนจัดทีม
-            local targets = {"android17", "luffy", "ikki", "jotaro", "bakugo", "toichiro", "saber", "johnny", "yoruichi"}
+            local targets = {"android17", "luffy", "ikki", "jotaro", "bakugo", "toichiro", "saber", "johnny2", "yoruichi"}
             local hud = LocalPlayer.PlayerGui:FindFirstChild("HUD")
             local isTargetEquipped = false
             
