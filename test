@@ -1177,7 +1177,7 @@ end
                 _G.Fallback4StarMode = true
                 
                 -- 🚨 ดักจับเลเวล 10 ทันทีที่รู้ว่าของหมด!
-                if GetPlayerLevel() >= 10 then
+                if GetPlayerLevel() >= 999999999 then
                     if HasTargetUnitInInventory() then return true end
                     
                     if _G.MoMoStatus then _G.MoMoStatus("LV.10+ รับรางวัล & รอรีจอย...") end
@@ -1291,7 +1291,7 @@ end
             
             -- ─── 0. ดักจับ LV.10+ ใน Lobby (เวอร์ชันแก้บั๊กข้ามขั้นตอน) ───
             local currentLvl = GetPlayerLevel()
-            if currentLvl >= 10 and not HasTargetUnitInInventory() then
+            --[[if currentLvl >= 10 and not HasTargetUnitInInventory() then
                 print("🚨 [Lobby] ตรวจพบ LV.10+ -> เริ่มขั้นตอนรับของรางวัล...")
                 if _G.MoMoStatus then _G.MoMoStatus("LV.10+ กำลังกรอกโค้ด & เปิดแคปซูล...") end
                 
@@ -1322,7 +1322,7 @@ end
                 print("🔄 กำลังรีจอย...")
                 Tutorial.Rejoin()
                 task.wait(999) 
-            end
+            end--]]
 
             -- ─── 1. ตรวจสอบทีมปัจจุบัน (อ่านจาก Viewport.WorldModel ตามภาพ UI) ───
             local isTeamValid = false
