@@ -7,6 +7,7 @@
     local workspace = game:GetService("Workspace")
     local UserInputService = game:GetService("UserInputService")
     local LP = LocalPlayer
+    warn = function(...) end
     
     local recentFailedSpots = {}
 
@@ -435,7 +436,7 @@ LocalPlayer.CharacterAdded:Connect(applyCustomNameTag)
                 local exportData = {}
                 for _, step in ipairs(_G.MoMoMacroLedger) do
                     table.insert(exportData, {
-                        Action = step.Action, Slot = step.Slot, RequiredMoney = step.RequiredMoney,
+                        Action = step.Action, Slot = step.Slot, Cost = step.Cost,
                         CFrameData = step.CFrame and serializeCFrame(step.CFrame) or nil
                     })
                 end
@@ -456,33 +457,11 @@ LocalPlayer.CharacterAdded:Connect(applyCustomNameTag)
         Callback = function(val)
             MoMoConfig.PlayMacro = val
             if val then
-                if _G.SelectedMacro and _G.SelectedMacro ~= "None" then
-                    local filepath = MacroFolder .. "/" .. _G.SelectedMacro .. ".json"
-                    if isfile(filepath) and readfile then
-                        local data = readfile(filepath)
-                        local success, decoded = pcall(function() return HttpService:JSONDecode(data) end)
-                        
-                        if success and type(decoded) == "table" then
-                            _G.MoMoMacroLedger = {}
-                            for _, step in ipairs(decoded) do
-                                table.insert(_G.MoMoMacroLedger, {
-                                    Action = step.Action, Slot = step.Slot, RequiredMoney = step.RequiredMoney,
-                                    CFrame = step.CFrameData and deserializeCFrame(step.CFrameData) or nil
-                                })
-                            end
-                            MoMoConfig.AutoPlay = false
-                            _G.MacroCurrentStep = 1
-                            MoMoNotify({Title = "Playing", Desc = "▶️ กำลังเล่นไฟล์: " .. _G.SelectedMacro, Time = 3})
-                        else
-                            MoMoNotify({Title = "Error", Desc = "❌ ไฟล์เสีย หรืออ่านข้อมูลไม่ได้!", Time = 3})
-                        end
-                    end
-                else
-                    MoMoNotify({Title = "Error", Desc = "❌ กรุณาเลือกไฟล์ใน Dropdown ก่อนกด Play!", Time = 3})
-                    task.spawn(function() pcall(function() self:SetState(false) end) end)
-                end
+                MoMoConfig.AutoPlay = false -- ปิด Auto Play ปกติทันทีเพื่อไม่ให้แย่งกันวาง
+                _G.MacroCurrentStep = 1     -- รีเซ็ตจุดเริ่มต้น
+                MoMoNotify({Title = "Macro Ready", Desc = "▶️ ระบบ Play Macro พร้อมทำงาน!", Time = 3})
             else
-                MoMoNotify({Title = "Stopped", Desc = "⏹️ หยุดการเล่นซ้ำ", Time = 3})
+                MoMoNotify({Title = "Stopped", Desc = "⏹️ หยุดการเล่น Macro แล้ว", Time = 3})
             end
         end
     })
@@ -941,19 +920,12 @@ LocalPlayer.CharacterAdded:Connect(applyCustomNameTag)
     local function getRealMoney()
         local m = 0
         pcall(function()
-            -- 1. เจาะเข้าไปที่หน้าต่าง hotbarGui
-            local gui = LocalPlayer.PlayerGui:FindFirstChild("hotbarGui")
-            
-            -- 2. สแกนหา Object ที่ชื่อ "yen" แบบเจาะลึกทุกชั้น (true)
-            local yenNode = gui and gui:FindFirstChild("yen", true)
-            
-            if yenNode then
-                -- 3. หา TextLabel ที่ชื่อ "value"
-                local label = yenNode:FindFirstChild("value")
-                if label and label:IsA("TextLabel") then
-                    -- 4. ใช้ %D เพื่อล้าง "ทุกอย่าง" ที่ไม่ใช่ตัวเลข (ลบลูกน้ำ, ช่องว่าง, ตัวอักษร)
-                    local cleanNumber = label.Text:gsub("%D", "")
-                    m = tonumber(cleanNumber) or 0
+            local valueLabel = LocalPlayer.PlayerGui:FindFirstChild("hotbarGui")
+            if valueLabel then
+                valueLabel = valueLabel:FindFirstChild("value", true)
+                if valueLabel and valueLabel:IsA("TextLabel") then
+                    local rawText = valueLabel.ContentText ~= "" and valueLabel.ContentText or valueLabel.Text
+                    m = tonumber((string.gsub(rawText, "[^%d]", ""))) or 0
                 end
             end
         end)
@@ -968,26 +940,20 @@ LocalPlayer.CharacterAdded:Connect(applyCustomNameTag)
         pcall(function()
             local container = LocalPlayer.PlayerGui.hotbarGui.scalingFrame.background.container
             for _, slot in pairs(container:GetChildren()) do
-                -- 1. สกัดเลข Slot
                 local slotStr = slot.Name:match("%d+") 
                 local slotNum = slotStr and tonumber(slotStr) or nil
-                
-                -- 2. ดึง UUID
                 local uuid = slot:GetAttribute("heroUUID")
                 
                 if uuid and slotNum then
                     local cost = 0
-                    
-                    -- 🌟 3. ดึงราคาจาก Object "PlacementPrice" ที่เราสแกนเจอ
-                    local priceLabel = slot:FindFirstChild("PlacementPrice", true)
+                    -- 🌟 หาชื่อป้ายแบบครอบคลุม และดึงค่าจาก ContentText ก่อน
+                    local priceLabel = slot:FindFirstChild("PlacementPrice", true) or slot:FindFirstChild("price", true)
                     if priceLabel and priceLabel:IsA("TextLabel") then
-                        -- ใช้ gsub("%D", "") เพื่อลบอักษรทุกตัวที่ไม่ใช่ตัวเลขออก (ลบ ¥ และ ,)
-                        cost = tonumber(priceLabel.Text:gsub("%D", "")) or 0
+                        local rawPrice = priceLabel.ContentText ~= "" and priceLabel.ContentText or priceLabel.Text
+                        cost = tonumber((string.gsub(rawPrice, "[^%d]", ""))) or 0
                     end
                     
-                    -- 4. ตั้งชื่อจำลอง (เพราะเกมไม่มี Text ชื่อตัวละคร)
                     local unitName = "Unit " .. slotNum
-                    
                     table.insert(deck, {UUID = uuid, Cost = cost, Slot = slotNum, Name = unitName})
                 end
             end
@@ -2569,234 +2535,307 @@ LocalPlayer.CharacterAdded:Connect(applyCustomNameTag)
     end)
 
     -- =====================================================================
-    -- 🎬 4. [MACRO SYSTEM] ระบบกล้องวงจรปิด & บันทึกข้อมูล V.9 (The Ultimate Fallback)
+    -- 🎬 4. [MACRO SYSTEM V.14.3] Master Hook & UI Reader (Record System)
     -- =====================================================================
     _G.MoMoMacroLedger = _G.MoMoMacroLedger or {}
-    
-    -- 🎥 1. ระบบจำป้อมล่าสุด (ใช้วิธีฝังเซ็นเซอร์ที่ Workspace พร้อมตรวจสอบความถูกต้อง)
-    _G.LastTowerAdded = nil
-    _G.LastTowerAddedTime = 0
-    
-    -- ล้าง Tracker เก่าทิ้งก่อน (ป้องกันบักเวลาผู้เล่นรันสคริปต์ทับ)
-    if _G.TowerTrackerConn_V9 then _G.TowerTrackerConn_V9:Disconnect() end
-    
-    _G.TowerTrackerConn_V9 = workspace.DescendantAdded:Connect(function(obj)
-        -- หน่วงเวลา 0.1s ให้ตัวเกมโหลดโมเดลและจัดหมวดหมู่ Parent ให้เสร็จ (แก้บัก Roblox โหลดช้า)
-        task.delay(0.1, function()
-            if obj and obj:IsA("Model") and obj.Name:match("^tower%-") then
-                if obj:IsDescendantOf(workspace) and obj.Parent and obj.Parent.Name == "placedTowers" then
-                    _G.LastTowerAdded = obj
-                    _G.LastTowerAddedTime = tick()
+
+    -- 🏷️ ฟังก์ชันลับ: เจาะอ่านราคาอัปเกรดจากหน้าต่าง UI ตรงๆ
+    local function getUpgradePriceFromUI()
+        local cost = 0
+        pcall(function()
+            local upgradeGui = LocalPlayer.PlayerGui:FindFirstChild("upgradeGui")
+            if upgradeGui then
+                local mainFrame = upgradeGui:FindFirstChild("mainFrame")
+                local content = mainFrame and mainFrame:FindFirstChild("content")
+                local upgradeNode = content and content:FindFirstChild("upgrade")
+                local quantityLabel = upgradeNode and upgradeNode:FindFirstChild("quantity")
+                
+                if quantityLabel and quantityLabel:IsA("TextLabel") then
+                    local txt = quantityLabel.ContentText ~= "" and quantityLabel.ContentText or quantityLabel.Text
+                    local cleanNum = tonumber((string.gsub(txt, "[^%d]", "")))
+                    if cleanNum and cleanNum > 0 then cost = cleanNum end
                 end
             end
         end)
-    end)
-
-    -- 🎥 2. สายลับดักรหัสเครือข่าย V.9 (รีเซ็ต Hook ใหม่ป้องกันบั๊กค้าง)
-    if not _G.MacroNamecallHooked_V9 then
-        _G.MacroNamecallHooked_V9 = true
-        local mt = getrawmetatable(game)
-        local oldNamecall = mt.__namecall
-        setreadonly(mt, false)
-
-        mt.__namecall = newcclosure(function(self, ...)
-            local method = getnamecallmethod()
-            local args = {...}
-
-            -- 🌟 ใช้ตัวแปรจาก _G เพื่อให้ค่าอัปเดตเสมอเวลารันสคริปต์ใหม่
-            if _G.RecordMacroActive and method == "FireServer" then
-                local name = self.Name
-                if name == "sync_RELIABLE" or name == "towers_RELIABLE" then
-                    
-                    local str = ""
-                    if typeof(args[1]) == "buffer" then
-                        str = buffer.tostring(args[1])
-                    elseif type(args[1]) == "string" then
-                        str = args[1]
-                    end
-
-                    if str ~= "" then
-                        task.spawn(function()
-                            -- 🟢 ระบบวางป้อม
-                            if name == "sync_RELIABLE" then
-                                local uuid = str:match("(%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x)")
-                                
-                                if uuid then
-                                    local slotNum = 0
-                                    -- ค้นหาว่า UUID นี้ตรงกับ Slot ไหนในกระเป๋า
-                                    for _, c in ipairs(getDeckUUIDs()) do
-                                        if string.lower(c.UUID) == string.lower(uuid) then 
-                                            slotNum = c.Slot; break 
-                                        end
-                                    end
-
-                                    if slotNum > 0 then
-                                        local money = getRealMoney()
-                                        local targetTower = nil
-                                        local startWait = tick()
-                                        
-                                        -- รอโมเดลป้อมตกถึงพื้น (เพิ่มเวลาเป็น 3.5 วินาที เผื่อเซิร์ฟหน่วง)
-                                        while tick() - startWait < 3.5 do
-                                            if _G.LastTowerAdded and math.abs(tick() - _G.LastTowerAddedTime) < 4 then
-                                                targetTower = _G.LastTowerAdded
-                                                break
-                                            end
-                                            task.wait(0.1)
-                                        end
-
-                                        -- 🌟 แผนหลัก: บันทึกจากพิกัดป้อมที่ตกถึงพื้น
-                                        if targetTower and targetTower:GetPivot() then
-                                            table.insert(_G.MoMoMacroLedger, {
-                                                Action = "Place",
-                                                Slot = slotNum,
-                                                CFrame = targetTower:GetPivot(),
-                                                RequiredMoney = money
-                                            })
-
-                                        else
-                                            -- 🚨 แผนสำรองฉุกเฉิน: ถ้าป้อมไม่โหลด ให้ดึงพิกัดจากปลายเมาส์ของเราแทน!
-                                            warn("⚠️ [Macro] เซิร์ฟเวอร์โหลดป้อมช้า! กำลังใช้ระบบสำรอง (Mouse Target)...")
-                                            local mouse = Players.LocalPlayer:GetMouse()
-                                            if mouse.Hit then
-                                                -- ดันพิกัดขึ้นจากพื้นนิดหน่อยเพื่อให้ตรงกับแกน CFrame ของป้อมปกติ
-                                                local backupCFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 1.5, 0))
-                                                table.insert(_G.MoMoMacroLedger, {
-                                                    Action = "Place",
-                                                    Slot = slotNum,
-                                                    CFrame = backupCFrame,
-                                                    RequiredMoney = money
-                                                })
-
-                                            else
-                                                warn("❌ [Macro Error] บันทึกไม่ได้: หาพิกัดเป้าหมายไม่เจอ!")
-                                            end
-                                        end
-                                    else
-                                        warn("❌ [Macro Error] หา Slot ของ UUID ไม่เจอ! (บอทอาจอ่านกระเป๋าไม่ทัน)")
-                                    end
-                                end
-
-                            -- 🟡 ระบบอัปเกรด
-                            elseif name == "towers_RELIABLE" then
-                                local towerName = str:match("(tower%-[%w%-]+)")
-                                
-                                if towerName then
-                                    local placedFolder = workspace:FindFirstChild("placedTowers")
-                                    local towerObj = placedFolder and placedFolder:FindFirstChild(towerName)
-                                    
-                                    if towerObj and towerObj:GetPivot() then
-                                        local money = getRealMoney()
-                                        table.insert(_G.MoMoMacroLedger, {
-                                            Action = "Upgrade",
-                                            CFrame = towerObj:GetPivot(), 
-                                            RequiredMoney = money
-                                        })
-
-                                    else
-                                        warn("❌ [Macro Error] อัปเกรดล้มเหลว: หาโมเดลป้อมชื่อ " .. towerName .. " บนแมพไม่เจอ!")
-                                    end
-                                end
-                            end
-                        end)
-                    end
-                end
-            end
-            return oldNamecall(self, ...)
-        end)
-        setreadonly(mt, true)
-
+        return cost
     end
 
+    -- 🏗️ 4.1 Hook ระบบวางป้อม (อัปเกรดแผนสำรองกันบั๊ก 0 บาท)
+    -- 🏗️ 4.1 Hook ระบบวางป้อม (อัปเกรดกันสแปม + ล็อกราคาเป๊ะๆ)
+    task.spawn(function()
+        local sync = nil
+        while not sync do
+            pcall(function() sync = require(ReplicatedStorage.gameClient.net.sync) end)
+            task.wait(0.5)
+        end
+
+        if hookfunction and not _G.MoMoHookPlaced then
+            _G.MoMoHookPlaced = true
+            local oldCall
+            oldCall = hookfunction(sync.clientTowerPlacement.call, function(uuid, cframe, ...)
+                if _G.RecordMacroActive then
+                    -- 🛡️ ป้องกันการกดสแปมรัวๆ (คิวซ้อน)
+                    if _G.MoMoIsRecordingAction then return oldCall(uuid, cframe, ...) end
+                    _G.MoMoIsRecordingAction = true
+
+                    local oldMoney = getRealMoney()
+                    
+                    task.spawn(function()
+                        local waitTime = 0
+                        local success = false
+                        local capturedNewMoney = oldMoney
+                        
+                        -- ⏳ ดักรอเงินลด (ลดดีเลย์เช็คให้ไวขึ้นเป็น 0.1 วิ)
+                        while waitTime < 3.5 do
+                            task.wait(0.1)
+                            waitTime = waitTime + 0.1
+                            local checkMoney = getRealMoney()
+                            if checkMoney < oldMoney then 
+                                success = true 
+                                capturedNewMoney = checkMoney -- 📌 ล็อกเงินที่ลดลงไว้ทันที! กันเงินฟาร์มเด้งแทรก
+                                break 
+                            end
+                        end
+                        
+                        if success then
+                            local targetCard = nil
+                            local deck = getDeckUUIDs() 
+                            if type(deck) == "table" then
+                                for _, c in pairs(deck) do
+                                    if string.lower(c.UUID) == string.lower(uuid) then targetCard = c; break end
+                                end
+                            end
+                            
+                            -- ประมวลผลราคา: ถ้าการ์ดบอด ให้ใช้เงินที่ล็อกไว้มาลบกัน
+                            local finalCost = 0
+                            if targetCard and targetCard.Cost and targetCard.Cost > 0 then
+                                finalCost = targetCard.Cost
+                            else
+                                finalCost = oldMoney - capturedNewMoney
+                            end
+                            
+                            if targetCard and targetCard.Slot > 0 then
+                                table.insert(_G.MoMoMacroLedger, {
+                                    Action = "Place", Slot = targetCard.Slot, CFrame = cframe, Cost = finalCost
+                                })
+                                warn(string.format("🔴 [RECORD] วางป้อม Slot %d | ราคา: %d", targetCard.Slot, finalCost))
+                            end
+                        else
+                            warn("❌ [ข้าม] วางป้อมไม่สำเร็จ (กดสแปม/เงินไม่ลด/จุดห้ามวาง)")
+                        end
+                        
+                        -- 🔓 ปลดล็อกให้คิวบันทึกรอบต่อไปทำงานได้
+                        task.wait(0.2)
+                        _G.MoMoIsRecordingAction = false
+                    end)
+                end
+                return oldCall(uuid, cframe, ...)
+            end)
+        end
+    end)
+
+    -- ⭐ 4.2 Hook ระบบอัปเกรด (อัปเกรดกันสแปม + ล็อกราคาเป๊ะๆ)
+    task.spawn(function()
+        local towersNet = nil
+        while not towersNet do
+            pcall(function() towersNet = require(ReplicatedStorage.gameClient.net.towers) end)
+            task.wait(0.5)
+        end
+
+        if towersNet and towersNet.upgradeUnit and hookfunction and not _G.MoMoHookUpgrade then
+            _G.MoMoHookUpgrade = true
+            local oldUpgrade
+            oldUpgrade = hookfunction(towersNet.upgradeUnit.call, function(towerId, ...)
+                if _G.RecordMacroActive then
+                    -- 🛡️ ป้องกันผู้ใช้สแปมคลิกอัปเกรด
+                    if _G.MoMoIsRecordingAction then return oldUpgrade(towerId, ...) end
+                    _G.MoMoIsRecordingAction = true
+
+                    local uiCost = getUpgradePriceFromUI()
+                    local oldMoney = getRealMoney()
+                    
+                    task.spawn(function()
+                        local waitTime = 0
+                        local success = false
+                        local capturedNewMoney = oldMoney
+                        
+                        while waitTime < 3.5 do
+                            task.wait(0.01)
+                            waitTime = waitTime + 0.01
+                            local checkMoney = getRealMoney()
+                            if checkMoney < oldMoney then 
+                                success = true 
+                                capturedNewMoney = checkMoney -- 📌 ล็อกเงินทันที
+                                break 
+                            end
+                        end
+                        
+                        if success then
+                            local finalCost = uiCost
+                            if not finalCost or finalCost == 0 then
+                                finalCost = oldMoney - capturedNewMoney
+                            end
+
+                            pcall(function() 
+                                local towerObj = nil
+                                local placedFolder = workspace:FindFirstChild("placedTowers")
+                                if placedFolder then towerObj = placedFolder:FindFirstChild(tostring(towerId)) end
+                                if not towerObj then
+                                    local descendants = workspace:GetDescendants()
+                                    if type(descendants) == "table" then
+                                        for _, obj in pairs(descendants) do
+                                            if obj.Name == tostring(towerId) then towerObj = obj; break end
+                                        end
+                                    end
+                                end
+
+                                if towerObj and towerObj:GetPivot() then
+                                    table.insert(_G.MoMoMacroLedger, {
+                                        Action = "Upgrade", CFrame = towerObj:GetPivot(), Cost = finalCost
+                                    })
+                                    warn(string.format("🔴 [RECORD] อัปเกรดป้อม | ราคา: %d", finalCost))
+                                end
+                            end)
+                        else
+                            warn("❌ [ข้าม] อัปเกรดไม่สำเร็จ (สแปมคลิก/เงินไม่พอ/ตัน)")
+                        end
+
+                        -- 🔓 ปลดล็อกให้คิวถัดไปทำงาน
+                        task.wait(0.2)
+                        _G.MoMoIsRecordingAction = false
+                    end)
+                end
+                return oldUpgrade(towerId, ...)
+            end)
+        end
+    end)
+
     -- =====================================================================
-    -- 🎬 3. เครื่องเล่นเทป (Macro Playback Engine)
+    -- 🎬 3. เครื่องเล่นเทป (Macro Playback Engine) The Relentless Loop
     -- =====================================================================
     task.spawn(function()
+        local HttpService = game:GetService("HttpService")
+        local MacroFolder = "MoMoHub_Macros"
+        local sync = nil
+        local towersNet = nil
+
         while true do
             task.wait(0.5)
             
-            -- ถ้าระบบ PlayMacro เปิดอยู่ และมีข้อมูลในสมุดบันทึก
-            if MoMoConfig.PlayMacro and _G.MoMoMacroLedger and #_G.MoMoMacroLedger > 0 then
-                if not _G.MacroCurrentStep then _G.MacroCurrentStep = 1 end
+            if MoMoConfig.PlayMacro then
                 
-                -- ถ้ายังอ่านไม่จบเล่ม
-                if _G.MacroCurrentStep <= #_G.MoMoMacroLedger then
-                    local stepData = _G.MoMoMacroLedger[_G.MacroCurrentStep]
-                    local currentMoney = getRealMoney()
-                    
-                    -- 💰 หัวใจหลัก: รอจนกว่าเงินในกระเป๋าจะถึงเป้าหมายที่เราบันทึกไว้
-                    if currentMoney >= stepData.RequiredMoney then
-                        
-                        -- 🏗️ โหมดวางป้อม
-                        if stepData.Action == "Place" then
-                            local sync = getSync()
-                            local deck = getDeckUUIDs()
-                            local targetCard = nil
-                            
-                            -- หาว่า Unit Slot นั้นในรอบนี้ UUID คืออะไร
-                            for _, c in ipairs(deck) do
-                                if c.Slot == stepData.Slot then targetCard = c; break end
-                            end
-                            
-                            -- ถ้าเงินพอค่าตัวป้อมจริงๆ (กันบั๊ก) ค่อยวาง
-                            if sync and targetCard and currentMoney >= targetCard.Cost then
-                                local ok = pcall(function()
-                                    sync.clientTowerPlacement.call(targetCard.UUID, stepData.CFrame)
-                                end)
-                                if ok then
+                -- โหลด Network Modules สดๆ
+                if not sync then pcall(function() sync = require(ReplicatedStorage.gameClient.net.sync) end) end
+                if not towersNet then pcall(function() towersNet = require(ReplicatedStorage.gameClient.net.towers) end) end
 
-                                    _G.MacroCurrentStep = _G.MacroCurrentStep + 1
-                                    task.wait(1.5) -- รอให้ป้อมลงพื้นชัวร์ๆ ก่อนขยับไปบรรทัดถัดไป
-                                end
+                -- Lazy-Load ไฟล์ Macro (ดึงข้อมูลล่าสุด)
+                if (not _G.MoMoMacroLedger or #_G.MoMoMacroLedger == 0) and _G.SelectedMacro and _G.SelectedMacro ~= "None" then
+                    local filepath = MacroFolder .. "/" .. _G.SelectedMacro .. ".json"
+                    if isfile and isfile(filepath) and readfile then
+                        local success, decoded = pcall(function() return HttpService:JSONDecode(readfile(filepath)) end)
+                        if success and type(decoded) == "table" and #decoded > 0 then
+                            _G.MoMoMacroLedger = {}
+                            for _, step in ipairs(decoded) do
+                                -- รองรับไฟล์เก่า (RequiredMoney) และไฟล์ใหม่ (Cost)
+                                local stepCost = step.Cost or step.RequiredMoney or 0
+                                table.insert(_G.MoMoMacroLedger, {
+                                    Action = step.Action, Slot = step.Slot, Cost = stepCost,
+                                    CFrame = step.CFrameData and deserializeCFrame(step.CFrameData) or nil
+                                })
                             end
-                            
-                        -- ⭐ โหมดอัปเกรด
-                        elseif stepData.Action == "Upgrade" then
-                            local placedFolder = workspace:FindFirstChild("placedTowers")
-                            local closestTower = nil
-                            local closestDist = 5 -- รัศมีค้นหาป้อมเก่า 5 เมตร
-                            
-                            -- สแกนหาป้อมที่อยู่ใกล้พิกัด (CFrame) ที่เราบันทึกไว้มากที่สุด
-                            if placedFolder then
-                                for _, obj in pairs(placedFolder:GetChildren()) do
-                                    if obj:IsA("Model") and obj.Name:match("^tower%-") then
-                                        local dist = (obj:GetPivot().Position - stepData.CFrame.Position).Magnitude
-                                        if dist < closestDist then
-                                            closestDist = dist
-                                            closestTower = obj
-                                        end
-                                    end
-                                end
-                            end
-                            
-                            -- ถ้าเจอป้อมเป้าหมาย ก็ยิงอัปเกรดเลย
-                            if closestTower then
-                                local ok = pcall(function()
-                                    ReplicatedStorage.towers.towers_RELIABLE:FireServer(
-                                        buffer.fromstring("\001\031+\000" .. closestTower.Name), {}
-                                    )
-                                end)
-                                if ok then
-
-                                    _G.MacroCurrentStep = _G.MacroCurrentStep + 1
-                                    task.wait(0.5)
-                                end
-                            else
-                                if not _G.LastWarnFindTower or tick() - _G.LastWarnFindTower > 3 then
-                                    _G.LastWarnFindTower = tick()
-                                    warn("⏳ [Play] เงินถึงแล้ว กำลังควานหาป้อมที่พิกัดเดิมเพื่ออัปเกรด...")
-                                end
-                            end
+                            _G.MacroCurrentStep = 1
+                            print("✅ [Macro Playback] โหลดไฟล์: " .. _G.SelectedMacro)
                         end
                     end
-                else
+                end
 
-                    MoMoNotify({Title = "Macro", Desc = "✅ รัน Macro จบแล้วจ้า!", Time = 5})
-                    MoMoConfig.PlayMacro = false -- ปิดปุ่มให้อัตโนมัติ
-                    task.wait(2)
+                -- เข้าลูปเล่น Macro (Relentless Execution)
+                if _G.MoMoMacroLedger and #_G.MoMoMacroLedger > 0 and sync and towersNet then
+                    if not _G.MacroCurrentStep then _G.MacroCurrentStep = 1 end
+                    
+                    if _G.MacroCurrentStep <= #_G.MoMoMacroLedger then
+                        local stepData = _G.MoMoMacroLedger[_G.MacroCurrentStep]
+                        local currentMoney = getRealMoney()
+                        
+                        -- รอจนกว่าเงินจะพอ
+                        if currentMoney >= stepData.Cost then
+                            local stepCompleted = false
+                            local retryCount = 0
+                            
+                            -- 🛡️ ลูปกัดไม่ปล่อย: ทำจนกว่าเงินจะลด!
+                            while not stepCompleted and MoMoConfig.PlayMacro do
+                                local moneyBeforeAction = getRealMoney()
+                                
+                                if stepData.Action == "Place" then
+                                    local deck = getDeckUUIDs()
+                                    local targetUuid = nil
+                                    if type(deck) == "table" then
+                                        for _, c in pairs(deck) do
+                                            if c.Slot == stepData.Slot then targetUuid = c.UUID break end
+                                        end
+                                    end
+                                    if targetUuid then
+                                        pcall(function() sync.clientTowerPlacement.call(targetUuid, stepData.CFrame) end)
+                                    end
+                                    
+                                elseif stepData.Action == "Upgrade" then
+                                    local placedFolder = workspace:FindFirstChild("placedTowers")
+                                    local closestTower = nil
+                                    local closestDist = 5
+                                    
+                                    if placedFolder then
+                                        for _, obj in pairs(placedFolder:GetChildren()) do
+                                            if obj:IsA("Model") and obj.Name:match("^tower%-") then
+                                                local dist = (obj:GetPivot().Position - stepData.CFrame.Position).Magnitude
+                                                if dist < closestDist then
+                                                    closestDist = dist
+                                                    closestTower = obj
+                                                end
+                                            end
+                                        end
+                                    end
+                                    
+                                    if closestTower then
+                                        pcall(function() towersNet.upgradeUnit.call(closestTower.Name) end)
+                                    end
+                                end
+                                
+                                -- ⏳ รอเช็คบิล (ตรวจสอบว่าเงินลดลงไหมใน 1.5 วินาที)
+                                local waitCheck = 0
+                                while waitCheck < 1.5 and MoMoConfig.PlayMacro do
+                                    task.wait(0.25)
+                                    waitCheck = waitCheck + 0.25
+                                    if getRealMoney() < moneyBeforeAction then
+                                        stepCompleted = true
+                                        break
+                                    end
+                                end
+                                
+                                if not stepCompleted then
+                                    retryCount = retryCount + 1
+                                    warn(string.format("⚠️ เงินยังไม่ลด! ย้ำคำสั่งรอบ %d (Step %d)", retryCount, _G.MacroCurrentStep))
+                                end
+                            end
+                            
+                            -- ทำสำเร็จแล้วเลื่อนไป Step ถัดไป
+                            if stepCompleted then
+                                print(string.format("✅ Step %d สำเร็จ! (%s)", _G.MacroCurrentStep, stepData.Action))
+                                _G.MacroCurrentStep = _G.MacroCurrentStep + 1
+                                task.wait(0.5) -- หน่วงก่อนไปสเตปต่อไป
+                            end
+                        end
+                    else
+                        MoMoNotify({Title = "Macro Finished", Desc = "✅ รัน Macro จบแล้วจ้า!", Time = 5})
+                        MoMoConfig.PlayMacro = false
+                        task.wait(2)
+                    end
                 end
             end
         end
     end)
+
+
+
 
     -- =====================================================================
     -- 🚀 5. ระบบ Auto Start Match (ยิงคำสั่งทุก 1 วิ ไม่สน UI/Lobby)
