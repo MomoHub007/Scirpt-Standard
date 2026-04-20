@@ -136,7 +136,7 @@ local serverRemote = Remotes:WaitForChild("Server")
 local function FastCheckTargetExist()
     local hasTarget = false
     pcall(function()
-        local targets = {"android17", "kidluffy", "ikki(halfmask)", "jotarokujo", "bakugo(blazing)", "toichiro", "sabernew", "johnny2", "luffy(4thgear)"}
+        local targets = {"android17", "kidluffy", "ikki(halfmask)", "jotarokujo", "bakugo(blazing)", "toichiro", "sabernew", "johnny2", "luffy(4thgear)", "zeke"}
         for _, obj in pairs(getgc(true)) do
             if type(obj) == "table" and rawget(obj, "Name") and rawget(obj, "ID") then
                 local uName = tostring(rawget(obj, "Name")):lower():gsub("%s+", "")
@@ -691,7 +691,7 @@ local function StartLobbyMaster()
         local targetNames = {
             "Android17", "KidLuffy", "Ikki (HalfMask)", 
             "Jotaro Kujo", "Bakugo (Blazing)", "Toichiro",
-            "SaberNew", "Johnny2" ,"Luffy (4th Gear)"
+            "SaberNew", "Johnny2" ,"Luffy (4th Gear)" , "Zeke" 
         }
 
         Tutorial.ForceLoadInventoryUI()
@@ -988,7 +988,7 @@ end
         
         local hud = LocalPlayer.PlayerGui:FindFirstChild("HUD")
         local slotTargets = {
-            { slot = 1, names = {"Android17", "KidLuffy", "Ikki(HalfMask)", "Ikki (HalfMask)", "JotaroKujo" , "Bakugo(Blazing)", "Toichiro", "SaberNew", "Johnny2" ,"Luffy (4th Gear)"} }
+            { slot = 1, names = {"Android17", "KidLuffy", "Ikki(HalfMask)", "Ikki (HalfMask)", "JotaroKujo" , "Bakugo(Blazing)", "Toichiro", "SaberNew", "Johnny2" ,"Luffy (4th Gear)" , "Zeke"} }
         }
 
         print("🛠️ [Debug] 3. เริ่มสแกนหา 'ดาว' จากหน้า UI (StarMap)...")
@@ -1354,7 +1354,7 @@ end
             if #equippedUnits > 0 then
                 -- มีตัวละครใส่อยู่ เช็คว่าตรงกับ Target หรือไม่
                 -- 🎯 เปลี่ยนมาใช้คีย์เวิร์ดแบบครอบคลุม ป้องกันโมเดล 3D ชื่อไม่ตรงกับการ์ด
-                local targets = {"android17", "luffy", "ikki", "jotaro", "bakugo", "toichiro", "sabernew", "johnny2", "yoruichi"}
+                local targets = {"android17", "kidluffy", "ikki(halfmask)", "jotarokujo", "bakugo(blazing)", "toichiro", "sabernew", "johnny2", "luffy(4thgear)", "zeke"}
                 local hasTargetEquipped = false
                 
                 for _, eqUnit in ipairs(equippedUnits) do
@@ -1496,7 +1496,7 @@ local function StartAutoPlay()
         -- 🧠 ฟังก์ชันเช็คว่าตอนนี้ใช้ตัว Target หรือใช้ตัวสำรอง (4 ดาว) แบกอยู่
         local function CheckIfUsingFallback()
             -- 🎯 ใช้คีย์เวิร์ดสั้นๆ เหมือนตอนจัดทีม
-            local targets = {"android17", "luffy", "ikki", "jotaro", "bakugo", "toichiro", "saber", "johnny2", "yoruichi"}
+            local targets = {"android17", "kidluffy", "ikki(halfmask)", "jotarokujo", "bakugo(blazing)", "toichiro", "sabernew", "johnny2", "luffy(4thgear)", "zeke"}
             local hud = LocalPlayer.PlayerGui:FindFirstChild("HUD")
             local isTargetEquipped = false
             
